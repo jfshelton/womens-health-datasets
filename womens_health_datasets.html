@@ -1,0 +1,767 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Women's Health Datasets</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --rose:   #be185d; --rose-lt:#fdf2f8; --rose-md:#fbcfe8;
+      --open:   #15803d; --open-bg:#dcfce7;
+      --reg:    #b45309; --reg-bg: #fef3c7;
+      --app:    #be185d; --app-bg: #fdf2f8;
+      --gray:   #6b7280; --border: #e5e7eb;
+      --shadow: 0 1px 3px rgba(0,0,0,.08);
+      --shadow-hover: 0 4px 12px rgba(0,0,0,.12);
+      /* status colours */
+      --s-not:     #6b7280; --s-not-bg:     #f3f4f6;
+      --s-applied: #1d4ed8; --s-applied-bg: #dbeafe;
+      --s-pending: #b45309; --s-pending-bg: #fef3c7;
+      --s-approved:#15803d; --s-approved-bg:#dcfce7;
+      --s-rejected:#b91c1c; --s-rejected-bg:#fee2e2;
+      --s-granted: #7e22ce; --s-granted-bg: #f3e8ff;
+    }
+
+    body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+           background:#f9fafb; color:#111827; min-height:100vh; }
+
+    /* ── Header ── */
+    header { background:linear-gradient(135deg,#9d174d 0%,#be185d 60%,#db2777 100%);
+             color:white; padding:2rem 2rem 0; text-align:center; }
+    header h1 { font-size:1.9rem; font-weight:700; letter-spacing:-.02em; margin-bottom:.3rem; }
+    header p  { font-size:.95rem; opacity:.85; max-width:580px; margin:0 auto 1.25rem; }
+
+    /* ── Tabs ── */
+    .tabs { display:flex; justify-content:center; gap:.25rem; }
+    .tab-btn {
+      padding:.65rem 1.5rem; border:none; border-radius:8px 8px 0 0;
+      font-size:.9rem; font-weight:600; cursor:pointer;
+      background:rgba(255,255,255,.2); color:rgba(255,255,255,.85);
+      transition:background .15s, color .15s;
+    }
+    .tab-btn:hover  { background:rgba(255,255,255,.3); color:white; }
+    .tab-btn.active { background:white; color:var(--rose); }
+    .tab-badge {
+      display:inline-flex; align-items:center; justify-content:center;
+      background:var(--rose); color:white; border-radius:10px;
+      font-size:.7rem; font-weight:700; min-width:18px; height:18px;
+      padding:0 5px; margin-left:.35rem; vertical-align:middle;
+    }
+    .tab-btn.active .tab-badge { background:var(--rose); }
+
+    /* ── Tab panels ── */
+    .tab-panel { display:none; }
+    .tab-panel.active { display:block; }
+
+    /* ── Controls (Browse) ── */
+    .controls {
+      position:sticky; top:0; z-index:100; background:white;
+      border-bottom:1px solid var(--border); padding:.9rem 2rem;
+      display:flex; flex-wrap:wrap; gap:.65rem; align-items:center;
+    }
+    .controls input[type=search] {
+      flex:1 1 260px; padding:.6rem 1rem .6rem 2.4rem;
+      border:1.5px solid var(--border); border-radius:8px; font-size:.9rem;
+      background:#f9fafb url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%236b7280' viewBox='0 0 16 16'%3E%3Cpath d='M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398l3.85 3.85a1 1 0 0 0 1.415-1.415l-3.868-3.833zm-5.242 1.156a5 5 0 1 1 0-10 5 5 0 0 1 0 10z'/%3E%3C/svg%3E") no-repeat .75rem center;
+      outline:none; transition:border-color .15s;
+    }
+    .controls input[type=search]:focus { border-color:var(--rose); }
+    .controls select {
+      padding:.6rem .9rem; border:1.5px solid var(--border); border-radius:8px;
+      font-size:.88rem; background:white; color:#374151; outline:none; cursor:pointer;
+    }
+    .controls select:focus { border-color:var(--rose); }
+    #result-count { font-size:.82rem; color:var(--gray); margin-left:auto; white-space:nowrap; }
+
+    /* ── Browse grid ── */
+    #browse-panel main { max-width:1400px; margin:0 auto; padding:1.5rem 2rem 3rem; }
+    #grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(340px,1fr)); gap:1.1rem; }
+
+    /* ── Card ── */
+    .card {
+      background:white; border:1px solid var(--border); border-radius:12px;
+      padding:1.1rem 1.1rem .9rem; box-shadow:var(--shadow);
+      display:flex; flex-direction:column; gap:.65rem;
+      transition:box-shadow .2s,transform .2s;
+    }
+    .card:hover { box-shadow:var(--shadow-hover); transform:translateY(-2px); }
+    .card.tracked { border-color:#c084fc; box-shadow:0 0 0 2px #f3e8ff,var(--shadow); }
+
+    .card-header { display:flex; justify-content:space-between; align-items:flex-start; gap:.5rem; }
+    .card-title  { font-size:.95rem; font-weight:650; line-height:1.35; flex:1; }
+    .badge { flex-shrink:0; font-size:.68rem; font-weight:600; padding:.2rem .5rem;
+             border-radius:20px; white-space:nowrap; }
+    .badge-open         { background:var(--open-bg); color:var(--open); }
+    .badge-registration { background:var(--reg-bg);  color:var(--reg); }
+    .badge-application  { background:var(--app-bg);  color:var(--app); }
+
+    .card-desc {
+      font-size:.84rem; color:#374151; line-height:1.55;
+      display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden;
+    }
+    .meta { display:flex; flex-wrap:wrap; gap:.35rem; }
+    .pill       { font-size:.7rem; background:#f3f4f6; color:#374151; border-radius:6px; padding:.18rem .5rem; }
+    .pill-focus { background:var(--rose-md); color:var(--rose); font-weight:600; }
+    .pill-repo  { background:#ede9fe; color:#6d28d9; }
+
+    .detail-rows { font-size:.78rem; color:#4b5563; display:flex; flex-direction:column; gap:.28rem; }
+    .detail-row  { display:flex; gap:.4rem; }
+    .detail-label{ font-weight:600; color:#374151; min-width:76px; flex-shrink:0; }
+    .detail-val  { color:#6b7280; }
+
+    .card-footer {
+      margin-top:auto; padding-top:.5rem; border-top:1px solid var(--border);
+      display:flex; gap:.5rem; flex-wrap:wrap;
+    }
+    .btn-apply {
+      flex:1; min-width:110px; display:inline-flex; align-items:center; justify-content:center;
+      gap:.35rem; padding:.5rem .9rem; background:var(--rose); color:white;
+      border:none; border-radius:8px; font-size:.84rem; font-weight:600; cursor:pointer;
+      text-decoration:none; transition:background .15s;
+    }
+    .btn-apply:hover { background:#9d174d; }
+    .btn-track {
+      padding:.5rem .75rem; border-radius:8px; font-size:.84rem; cursor:pointer;
+      border:1.5px solid var(--border); background:white; color:#374151;
+      transition:background .15s, border-color .15s; flex-shrink:0;
+      display:flex; align-items:center; gap:.3rem;
+    }
+    .btn-track:hover       { border-color:#c084fc; background:#fdf4ff; }
+    .btn-track.is-tracked  { border-color:#c084fc; background:#f3e8ff; color:#7e22ce; font-weight:600; }
+    .btn-copy {
+      padding:.5rem .7rem; background:#f3f4f6; color:#374151;
+      border:none; border-radius:8px; font-size:.84rem; cursor:pointer; flex-shrink:0;
+    }
+    .btn-copy:hover { background:#e5e7eb; }
+
+    /* ── Empty state ── */
+    .empty-state { display:none; text-align:center; padding:4rem 1rem; color:var(--gray); }
+    .empty-state svg { margin-bottom:1rem; opacity:.4; }
+
+    /* ══════════════════════════════════════
+       APPLICATIONS TAB
+    ══════════════════════════════════════ */
+    #tracker-panel { max-width:1300px; margin:0 auto; padding:1.5rem 2rem 3rem; }
+
+    .tracker-toolbar {
+      display:flex; align-items:center; gap:.75rem; flex-wrap:wrap;
+      margin-bottom:1.25rem;
+    }
+    .tracker-toolbar h2 { font-size:1.1rem; font-weight:700; }
+    .tracker-toolbar select, .tracker-toolbar input {
+      padding:.5rem .8rem; border:1.5px solid var(--border); border-radius:8px;
+      font-size:.88rem; background:white; outline:none;
+    }
+    .btn-export {
+      margin-left:auto; padding:.5rem 1rem; border-radius:8px; font-size:.84rem;
+      font-weight:600; border:1.5px solid var(--border); background:white;
+      cursor:pointer; transition:background .15s;
+    }
+    .btn-export:hover { background:#f3f4f6; }
+
+    .tracker-empty { text-align:center; padding:4rem 1rem; color:var(--gray); }
+    .tracker-empty p { margin-top:.75rem; font-size:.9rem; }
+
+    /* Application cards (list style) */
+    #app-list { display:flex; flex-direction:column; gap:.85rem; }
+
+    .app-card {
+      background:white; border:1px solid var(--border); border-radius:12px;
+      padding:1.1rem 1.25rem; box-shadow:var(--shadow);
+    }
+    .app-card-top {
+      display:flex; align-items:flex-start; gap:1rem; flex-wrap:wrap;
+    }
+    .app-card-info { flex:1; min-width:200px; }
+    .app-card-name { font-size:.98rem; font-weight:650; margin-bottom:.25rem; }
+    .app-card-meta { font-size:.8rem; color:var(--gray); display:flex; gap:.5rem; flex-wrap:wrap; }
+
+    .app-card-controls {
+      display:flex; align-items:center; gap:.6rem; flex-wrap:wrap; flex-shrink:0;
+    }
+    .status-select {
+      padding:.4rem .7rem; border-radius:8px; font-size:.82rem; font-weight:600;
+      border:none; cursor:pointer; outline:none;
+    }
+    .status-Not-Started    { background:var(--s-not-bg);     color:var(--s-not); }
+    .status-Applied        { background:var(--s-applied-bg); color:var(--s-applied); }
+    .status-Pending-Review { background:var(--s-pending-bg); color:var(--s-pending); }
+    .status-Approved       { background:var(--s-approved-bg);color:var(--s-approved); }
+    .status-Rejected       { background:var(--s-rejected-bg);color:var(--s-rejected); }
+    .status-Access-Granted { background:var(--s-granted-bg); color:var(--s-granted); }
+
+    .btn-remove {
+      padding:.35rem .65rem; border-radius:7px; font-size:.8rem;
+      border:1.5px solid #fecaca; background:#fff5f5; color:#b91c1c;
+      cursor:pointer; transition:background .15s;
+    }
+    .btn-remove:hover { background:#fee2e2; }
+
+    .app-card-detail {
+      margin-top:.9rem; display:grid;
+      grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:.6rem;
+    }
+    .app-field label { display:block; font-size:.72rem; font-weight:600; color:var(--gray);
+                       text-transform:uppercase; letter-spacing:.04em; margin-bottom:.25rem; }
+    .app-field input, .app-field textarea {
+      width:100%; padding:.45rem .65rem; border:1.5px solid var(--border); border-radius:7px;
+      font-size:.83rem; font-family:inherit; outline:none; resize:vertical;
+      transition:border-color .15s;
+    }
+    .app-field input:focus, .app-field textarea:focus { border-color:var(--rose); }
+    .app-field textarea { min-height:72px; }
+    .app-field-wide { grid-column:1/-1; }
+    .app-card-link { font-size:.78rem; color:var(--rose); text-decoration:none; }
+    .app-card-link:hover { text-decoration:underline; }
+
+    /* ══════════════════════════════════════
+       IMPACT TAB
+    ══════════════════════════════════════ */
+    #impact-panel { max-width:1100px; margin:0 auto; padding:1.5rem 2rem 3rem; }
+    #impact-panel h2 { font-size:1.15rem; font-weight:700; margin-bottom:1rem; }
+
+    .stat-grid {
+      display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:.85rem;
+      margin-bottom:2rem;
+    }
+    .stat-card {
+      background:white; border:1px solid var(--border); border-radius:12px;
+      padding:1.1rem 1rem; text-align:center; box-shadow:var(--shadow);
+    }
+    .stat-value { font-size:2rem; font-weight:700; color:var(--rose); line-height:1; }
+    .stat-label { font-size:.8rem; color:var(--gray); margin-top:.35rem; font-weight:500; }
+
+    /* Funnel chart */
+    .funnel-wrap { background:white; border:1px solid var(--border); border-radius:12px;
+                   padding:1.25rem; box-shadow:var(--shadow); margin-bottom:1.5rem; }
+    .funnel-wrap h3 { font-size:.95rem; font-weight:700; margin-bottom:1rem; }
+    .funnel-row { display:flex; align-items:center; gap:.75rem; margin-bottom:.6rem; }
+    .funnel-label { font-size:.82rem; width:130px; flex-shrink:0; font-weight:500; }
+    .funnel-bar-wrap { flex:1; background:#f3f4f6; border-radius:6px; height:28px; overflow:hidden; }
+    .funnel-bar { height:100%; border-radius:6px; transition:width .5s; display:flex;
+                  align-items:center; justify-content:flex-end; padding-right:.5rem;
+                  font-size:.75rem; font-weight:700; color:white; min-width:28px; }
+    .funnel-count { font-size:.82rem; font-weight:700; min-width:24px; text-align:right; }
+
+    /* Focus breakdown */
+    .breakdown-wrap { background:white; border:1px solid var(--border); border-radius:12px;
+                      padding:1.25rem; box-shadow:var(--shadow); margin-bottom:1.5rem; }
+    .breakdown-wrap h3 { font-size:.95rem; font-weight:700; margin-bottom:1rem; }
+    .breakdown-row { display:flex; align-items:center; gap:.65rem; margin-bottom:.5rem; font-size:.83rem; }
+    .breakdown-focus { flex:1; color:#374151; }
+    .breakdown-dots  { display:flex; gap:3px; }
+    .dot { width:10px; height:10px; border-radius:3px; background:var(--rose-md); }
+    .dot.filled { background:var(--rose); }
+    .breakdown-n { min-width:20px; text-align:right; font-weight:600; color:var(--rose); }
+
+    /* Outputs section */
+    .outputs-wrap { background:white; border:1px solid var(--border); border-radius:12px;
+                    padding:1.25rem; box-shadow:var(--shadow); }
+    .outputs-wrap h3 { font-size:.95rem; font-weight:700; margin-bottom:.9rem; }
+    .output-entry { border-left:3px solid var(--rose-md); padding:.5rem .75rem;
+                    margin-bottom:.6rem; border-radius:0 6px 6px 0; background:var(--rose-lt); }
+    .output-entry .out-dataset { font-size:.78rem; color:var(--rose); font-weight:600; margin-bottom:.2rem; }
+    .output-entry .out-text    { font-size:.85rem; color:#374151; }
+    .no-outputs { font-size:.88rem; color:var(--gray); font-style:italic; }
+
+    /* ── Toast ── */
+    #toast {
+      position:fixed; bottom:1.5rem; right:1.5rem;
+      background:#111827; color:white; padding:.6rem 1rem;
+      border-radius:8px; font-size:.84rem; opacity:0; transform:translateY(8px);
+      transition:opacity .25s,transform .25s; pointer-events:none; z-index:9999;
+    }
+    #toast.show { opacity:1; transform:translateY(0); }
+
+    @media(max-width:640px){
+      header h1{font-size:1.4rem;}
+      .controls,#tracker-panel,#impact-panel,#browse-panel main{padding-left:1rem;padding-right:1rem;}
+      #grid{grid-template-columns:1fr;}
+      .tab-btn{padding:.55rem .9rem;font-size:.82rem;}
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Women's Health Datasets</h1>
+  <p>Browse 159 curated datasets, track your applications, and measure research impact.</p>
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab('browse')">Browse Datasets</button>
+    <button class="tab-btn" onclick="switchTab('tracker')" id="tab-tracker-btn">
+      My Applications<span class="tab-badge" id="app-count-badge">0</span>
+    </button>
+    <button class="tab-btn" onclick="switchTab('impact')">Impact Dashboard</button>
+  </div>
+</header>
+
+<!-- ════════════════════════════════════ BROWSE ════════════════════════════════════ -->
+<div class="tab-panel active" id="browse-panel">
+  <div class="controls">
+    <input type="search" id="search" placeholder="Search datasets, keywords, repositories…" autocomplete="off" />
+    <select id="filter-access">
+      <option value="">All access levels</option>
+      <option>Open</option>
+      <option>Registration Required</option>
+      <option>Application Required</option>
+    </select>
+    <select id="filter-focus">
+      <option value="">All health focus areas</option>
+    </select>
+    <select id="filter-repo">
+      <option value="">All repositories</option>
+    </select>
+    <span id="result-count"></span>
+  </div>
+  <main>
+    <div id="grid"></div>
+    <div class="empty-state" id="browse-empty">
+      <svg width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+        <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+      </svg>
+      <p>No datasets match. Try different keywords or clear filters.</p>
+    </div>
+  </main>
+</div>
+
+<!-- ════════════════════════════════════ TRACKER ════════════════════════════════════ -->
+<div class="tab-panel" id="tracker-panel">
+  <div class="tracker-toolbar">
+    <h2>My Applications</h2>
+    <select id="tracker-filter-status" onchange="renderTracker()">
+      <option value="">All statuses</option>
+      <option>Not Started</option>
+      <option>Applied</option>
+      <option>Pending Review</option>
+      <option>Approved</option>
+      <option>Rejected</option>
+      <option>Access Granted</option>
+    </select>
+    <button class="btn-export" onclick="exportCSV()">⬇ Export CSV</button>
+  </div>
+
+  <div class="tracker-empty" id="tracker-empty" style="display:none;">
+    <svg width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+      <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/>
+      <rect x="9" y="3" width="6" height="4" rx="1"/>
+    </svg>
+    <p>No applications tracked yet.<br>Browse datasets and click <strong>+ Track</strong> to start.</p>
+  </div>
+
+  <div id="app-list"></div>
+</div>
+
+<!-- ════════════════════════════════════ IMPACT ════════════════════════════════════ -->
+<div class="tab-panel" id="impact-panel">
+  <h2>Impact Dashboard</h2>
+
+  <div class="stat-grid" id="stat-grid"></div>
+
+  <div class="funnel-wrap">
+    <h3>Application Funnel</h3>
+    <div id="funnel-chart"></div>
+  </div>
+
+  <div class="breakdown-wrap">
+    <h3>Applications by Health Focus</h3>
+    <div id="focus-breakdown"></div>
+  </div>
+
+  <div class="outputs-wrap">
+    <h3>Research Outputs</h3>
+    <div id="outputs-list"></div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+const DATA    = [{"name": "SWAN (Study of Women's Health Across the Nation)", "description": "Multisite longitudinal study of 3,302 women tracking the menopausal transition. Includes hormones, bone density, cardiovascular, cognitive, and psychosocial data.", "focus": "Menopause / Reproductive Aging", "dataTypes": "Clinical assessments, Biospecimens, Hormone assays, DXA bone scans, ECG", "modality": "DXA, ECG", "subjects": "3,302", "design": "Longitudinal cohort", "access": "Application Required (ICPSR / BioLINCC)", "accessBucket": "Application Required", "license": "Data Use Agreement", "repo": "ICPSR / BioLINCC", "url": "https://www.icpsr.umich.edu/web/NACDA/series/253"}, {"name": "WHI (Women's Health Initiative)", "description": "Large U.S. clinical trial and observational study in 161,808 postmenopausal women. Covers HRT, diet, calcium, cardiovascular disease, cancer, and fractures.", "focus": "Menopause / Cardiovascular / Cancer Prevention", "dataTypes": "Clinical trials data, Biospecimens, Genomics, Imaging (DXA, mammography)", "modality": "DXA, Mammography", "subjects": "161,808", "design": "RCT + Observational cohort", "access": "Application Required (BioLINCC / dbGaP phs000200)", "accessBucket": "Application Required", "license": "NHLBI Data Use Agreement", "repo": "BioLINCC / dbGaP", "url": "https://www.whi.org/page/public-data-access"}, {"name": "Nurses' Health Study (NHS & NHS II)", "description": "Two landmark cohorts of U.S. nurses (NHS: 121,700 since 1976; NHS II: 116,429 since 1989) tracking diet, lifestyle, and chronic disease in women.", "focus": "General Women's Health / Chronic Disease", "dataTypes": "Questionnaire surveys, Biospecimens, Medical records", "modality": "", "subjects": "238,000+", "design": "Prospective cohort", "access": "Application Required", "accessBucket": "Application Required", "license": "Data Use Agreement", "repo": "Harvard T.H. Chan School of Public Health", "url": "https://nurseshealthstudy.org/researchers"}, {"name": "Black Women's Health Study (BWHS)", "description": "Prospective cohort of 59,000 Black women followed since 1995 for cancer, cardiovascular disease, diabetes, and reproductive health disparities.", "focus": "General Women's Health / Health Disparities", "dataTypes": "Questionnaire surveys, Biospecimens, Medical records linkage", "modality": "", "subjects": "59,000", "design": "Prospective cohort", "access": "Application Required", "accessBucket": "Application Required", "license": "Data Use Agreement", "repo": "Boston University", "url": "https://www.bu.edu/bwhs/"}, {"name": "Sister Study (NIEHS)", "description": "50,884 women whose sister had breast cancer followed for cancer and other diseases. Includes environmental exposures, genetics, and lifestyle factors.", "focus": "Breast Cancer Risk / Environmental Health", "dataTypes": "Questionnaire surveys, Biospecimens, Genomics, Actigraphy", "modality": "", "subjects": "50,884", "design": "Prospective cohort", "access": "Application Required (NIEHS)", "accessBucket": "Application Required", "license": "Data Use Agreement", "repo": "NIEHS / dbGaP phs001204", "url": "https://sisterstudy.niehs.nih.gov/English/data-access.htm"}, {"name": "PRESTO (Pregnancy Study Online)", "description": "Web-based cohort studying fertility, early pregnancy, and preconception health in North American couples.", "focus": "Fertility / Preconception / Maternal Health", "dataTypes": "Online questionnaires, Fertility tracking data, Biospecimens", "modality": "", "subjects": "10,000+", "design": "Prospective cohort", "access": "Application Required", "accessBucket": "Application Required", "license": "Data Use Agreement", "repo": "Boston University", "url": "https://www.bu.edu/presto/"}, {"name": "NICHD Fetal Growth Study", "description": "Longitudinal study of 2,334 low-risk singleton pregnancies measuring fetal growth with serial ultrasounds and newborn outcomes.", "focus": "Maternal Health / Fetal Development", "dataTypes": "Ultrasound imaging, Clinical assessments, Biospecimens", "modality": "Ultrasound", "subjects": "2,334", "design": "Longitudinal cohort", "access": "Application Required (NICHD DASH)", "accessBucket": "Application Required", "license": "Data Use Agreement", "repo": "NICHD DASH", "url": "https://dash.nichd.nih.gov/study/2756"}, {"name": "PLCO — Ovarian Cancer Screening Arm", "description": "Randomized trial of 78,000 women aged 55–74 evaluating ovarian cancer screening with CA-125 and transvaginal ultrasound.", "focus": "Ovarian Cancer / Cancer Screening", "dataTypes": "Biospecimens, Imaging (transvaginal ultrasound), Clinical outcomes", "modality": "Transvaginal Ultrasound", "subjects": "78,000", "design": "Randomized controlled trial", "access": "Application Required (dbGaP phs001286)", "accessBucket": "Application Required", "license": "Data Use Agreement", "repo": "NCI / dbGaP", "url": "https://cdas.cancer.gov/plco/"}, {"name": "CBIS-DDSM (Curated Breast Imaging Subset of DDSM)", "description": "2,620 mammography cases with expert-annotated mass and calcification ROIs, BI-RADS assessments, and pathology labels.", "focus": "Breast Cancer / Screening", "dataTypes": "DICOM mammography, ROI masks, BI-RADS labels, Pathology", "modality": "Mammography (DICOM)", "subjects": "2,620", "design": "Case-control", "access": "Open", "accessBucket": "Open", "license": "TCIA Data Usage Policy", "repo": "The Cancer Imaging Archive (TCIA)", "url": "https://www.cancerimagingarchive.net/collection/cbis-ddsm/"}, {"name": "Duke Breast Cancer MRI", "description": "922 breast MRI exams with clinical, pathologic, and genomic data for invasive breast cancer patients.", "focus": "Breast Cancer / Treatment", "dataTypes": "DICOM MRI, Clinical metadata, Genomics", "modality": "MRI (DICOM)", "subjects": "922", "design": "Retrospective cohort", "access": "Registration Required", "accessBucket": "Registration Required", "license": "TCIA Data Usage Policy", "repo": "The Cancer Imaging Archive (TCIA)", "url": "https://www.cancerimagingarchive.net/collection/duke-breast-cancer-mri/"}, {"name": "ISPY1 (Investigation of Serial Studies to Predict Your Therapeutic Response)", "description": "222 women with locally advanced breast cancer with MRI before, during, and after neoadjuvant chemotherapy.", "focus": "Breast Cancer / Treatment Response", "dataTypes": "DICOM MRI, Clinical metadata, Biomarkers", "modality": "MRI (DICOM)", "subjects": "222", "design": "Multi-site prospective trial", "access": "Registration Required", "accessBucket": "Registration Required", "license": "TCIA Data Usage Policy", "repo": "The Cancer Imaging Archive (TCIA)", "url": "https://www.cancerimagingarchive.net/collection/ispy1/"}, {"name": "ISPY2 (Investigation of Serial Studies to Predict Your Therapeutic Response 2)", "description": "Ongoing adaptive platform trial with MRI tracking neoadjuvant therapy response in breast cancer.", "focus": "Breast Cancer / Treatment Response", "dataTypes": "DICOM MRI, Clinical metadata, Biomarkers", "modality": "MRI (DICOM)", "subjects": "", "design": "Adaptive platform trial", "access": "Registration Required", "accessBucket": "Registration Required", "license": "TCIA Data Usage Policy", "repo": "The Cancer Imaging Archive (TCIA)", "url": "https://www.cancerimagingarchive.net/collection/ispy2/"}, {"name": "VinDr-Mammo", "description": "5,000 full-field digital mammograms with radiologist annotations for mass and calcification findings.", "focus": "Breast Cancer / Screening", "dataTypes": "DICOM mammography, Radiologist annotations", "modality": "Mammography (DICOM)", "subjects": "5,000", "design": "Retrospective", "access": "Registration Required (PhysioNet)", "accessBucket": "Registration Required", "license": "PhysioNet License", "repo": "PhysioNet", "url": "https://physionet.org/content/vindr-mammo/1.0.0/"}, {"name": "EMBED (Emory BrEast imaging Dataset)", "description": "3.4M+ mammography images from 115,000+ patients at Emory Healthcare — one of the largest and most diverse mammography datasets.", "focus": "Breast Cancer / Screening / Health Disparities", "dataTypes": "DICOM mammography, BI-RADS labels, Clinical metadata", "modality": "Mammography (DICOM)", "subjects": "115,931", "design": "Retrospective cohort", "access": "Application Required (AWS Open Data)", "accessBucket": "Open", "license": "PhysioNet Credentialed Health Data License", "repo": "PhysioNet / AWS Open Data", "url": "https://physionet.org/content/embed/1.0.0/"}, {"name": "INbreast (Full-Field Digital Mammography)", "description": "410 mammography cases from a Portuguese breast center with detailed expert annotations including masses, calcifications, and distortions.", "focus": "Breast Cancer / Screening", "dataTypes": "DICOM mammography, Expert annotations, BI-RADS", "modality": "Mammography (DICOM)", "subjects": "115", "design": "Retrospective", "access": "Registration Required", "accessBucket": "Registration Required", "license": "Academic use", "repo": "INESC TEC / Kaggle", "url": "https://www.kaggle.com/datasets/martholi/inbreast"}, {"name": "Breast Cancer Digital Repository (BCDR)", "description": "Mammography + ultrasound dataset with segmented lesions, clinical annotations, and patient demographics.", "focus": "Breast Cancer / Screening", "dataTypes": "Mammography, Ultrasound, Segmentation masks, Clinical data", "modality": "Mammography, Ultrasound", "subjects": "", "design": "Retrospective", "access": "Registration Required", "accessBucket": "Registration Required", "license": "Academic use", "repo": "University of Porto", "url": "https://bcdr.eu/"}, {"name": "Breast Ultrasound Images Dataset (BUSI)", "description": "780 breast ultrasound images from 600 women classified as normal, benign, or malignant with ground truth segmentation.", "focus": "Breast Cancer / Diagnosis", "dataTypes": "Ultrasound images, Segmentation masks, Labels", "modality": "Ultrasound", "subjects": "600", "design": "Retrospective", "access": "Open", "accessBucket": "Open", "license": "CC BY 4.0", "repo": "Kaggle / Mendeley Data", "url": "https://www.kaggle.com/datasets/aryashah2k/breast-ultrasound-images-dataset"}, {"name": "TCGA-BRCA (Breast Invasive Carcinoma)", "description": "1,098 breast cancer cases with WGS, RNA-seq, DNA methylation, protein expression, and clinical data.", "focus": "Breast Cancer / Genomics", "dataTypes": "WGS, RNA-seq, DNA methylation, miRNA, RPPA, Clinical", "modality": "", "subjects": "1,098", "design": "Retrospective multi-omic", "access": "Open (GDC) / Controlled (dbGaP phs000178)", "accessBucket": "Open", "license": "NIH GDC Data Use Agreement", "repo": "NCI GDC / TCGA", "url": "https://portal.gdc.cancer.gov/projects/TCGA-BRCA"}, {"name": "TCGA-OV (Ovarian Serous Cystadenocarcinoma)", "description": "608 ovarian cancer cases with multi-omic profiling — one of the first TCGA datasets to define molecular subtypes of ovarian cancer.", "focus": "Ovarian Cancer / Genomics", "dataTypes": "WGS, RNA-seq, DNA methylation, Clinical", "modality": "", "subjects": "608", "design": "Retrospective multi-omic", "access": "Open (GDC) / Controlled (dbGaP phs000178)", "accessBucket": "Open", "license": "NIH GDC Data Use Agreement", "repo": "NCI GDC / TCGA", "url": "https://portal.gdc.cancer.gov/projects/TCGA-OV"}, {"name": "TCGA-UCEC (Uterine Corpus Endometrial Carcinoma)", "description": "587 endometrial cancer cases with comprehensive molecular profiling defining four genomic subtypes.", "focus": "Endometrial Cancer / Genomics", "dataTypes": "WGS, RNA-seq, DNA methylation, Clinical", "modality": "", "subjects": "587", "design": "Retrospective multi-omic", "access": "Open (GDC) / Controlled (dbGaP phs000178)", "accessBucket": "Open", "license": "NIH GDC Data Use Agreement", "repo": "NCI GDC / TCGA", "url": "https://portal.gdc.cancer.gov/projects/TCGA-UCEC"}, {"name": "TCGA-CESC (Cervical Squamous Cell Carcinoma)", "description": "309 cervical cancer cases with genomic profiling including HPV integration analysis.", "focus": "Cervical Cancer / Genomics", "dataTypes": "WGS, RNA-seq, DNA methylation, Clinical", "modality": "", "subjects": "309", "design": "Retrospective multi-omic", "access": "Open (GDC) / Controlled (dbGaP phs000178)", "accessBucket": "Open", "license": "NIH GDC Data Use Agreement", "repo": "NCI GDC / TCGA", "url": "https://portal.gdc.cancer.gov/projects/TCGA-CESC"}, {"name": "TCGA-UCS (Uterine Carcinosarcoma)", "description": "57 uterine carcinosarcoma cases — rare and aggressive uterine malignancy with multi-omic profiling.", "focus": "Uterine Cancer / Genomics", "dataTypes": "WGS, RNA-seq, DNA methylation, Clinical", "modality": "", "subjects": "57", "design": "Retrospective multi-omic", "access": "Open (GDC) / Controlled (dbGaP phs000178)", "accessBucket": "Open", "license": "NIH GDC Data Use Agreement", "repo": "NCI GDC / TCGA", "url": "https://portal.gdc.cancer.gov/projects/TCGA-UCS"}, {"name": "METABRIC (Molecular Taxonomy of Breast Cancer International Consortium)", "description": "2,509 breast tumor samples with gene expression microarray, CNV, and long-term survival outcomes. Defined the PAM50 molecular subtypes.", "focus": "Breast Cancer / Genomics / Prognosis", "dataTypes": "Gene expression microarray, CNV, Clinical, Survival outcomes", "modality": "", "subjects": "2,509", "design": "Retrospective multi-omic", "access": "Registration Required (cBioPortal / EGA EGAS00000000083)", "accessBucket": "Registration Required", "license": "EGA Data Access Agreement", "repo": "cBioPortal / EGA", "url": "https://www.cbioportal.org/study/summary?id=brca_metabric"}, {"name": "CPTAC-BRCA (Proteogenomics)", "description": "122 breast cancer tumors with deep proteomics, phosphoproteomics, and multi-omic integration.", "focus": "Breast Cancer / Proteogenomics", "dataTypes": "Proteomics, Phosphoproteomics, RNA-seq, WGS, Clinical", "modality": "", "subjects": "122", "design": "Retrospective multi-omic", "access": "Open (PDC / GDC)", "accessBucket": "Open", "license": "NIH Data Use Agreement", "repo": "NCI CPTAC / PDC", "url": "https://proteomics.cancer.gov/programs/cptac/brca"}, {"name": "SIPaKMeD (Cervical Cell Image Dataset)", "description": "4,049 cervical cell images in 5 classes (normal, benign, precancerous, cancer) from Pap smear slides.", "focus": "Cervical Cancer / Cytology", "dataTypes": "Microscopy images, Classification labels", "modality": "Cytology (microscopy)", "subjects": "966", "design": "Cross-sectional", "access": "Open", "accessBucket": "Open", "license": "Academic use", "repo": "University of Ioannina / Kaggle", "url": "https://www.kaggle.com/datasets/prahladmehandiratta/cervical-cancer-largest-dataset-sipakmed"}, {"name": "Herlev Dataset (Cervical Cytology)", "description": "917 cervical cell images in 7 classes from Herlev University Hospital, widely used benchmark for Pap smear analysis.", "focus": "Cervical Cancer / Cytology", "dataTypes": "Microscopy images, Expert class labels", "modality": "Cytology (microscopy)", "subjects": "", "design": "Cross-sectional", "access": "Open", "accessBucket": "Open", "license": "Academic use", "repo": "Herlev University Hospital", "url": "http://mde-lab.aegean.gr/index.php/downloads"}, {"name": "FeTA Challenge (Fetal Tissue Annotation)", "description": "Fetal brain MRI dataset with expert tissue segmentation for neurological development research.", "focus": "Maternal Health / Fetal Development", "dataTypes": "MRI (NIfTI), Expert segmentation masks", "modality": "MRI", "subjects": "", "design": "Cross-sectional", "access": "Registration Required", "accessBucket": "Registration Required", "license": "CC BY 4.0", "repo": "Synapse / MICCAI", "url": "https://www.synapse.org/feta"}, {"name": "OB-GYN Ultrasound — Maternal-Fetal Dataset", "description": "Multi-class fetal ultrasound plane classification dataset with 12,400 images across 6 standard fetal planes.", "focus": "Maternal Health / Obstetric Imaging", "dataTypes": "Ultrasound images, Plane classification labels", "modality": "Ultrasound", "subjects": "1,792", "design": "Retrospective", "access": "Open", "accessBucket": "Open", "license": "CC BY 4.0", "repo": "Zenodo / Kaggle", "url": "https://zenodo.org/record/3904280"}, {"name": "CTG (Cardiotocography) Dataset — UCI", "description": "2,126 fetal cardiotocogram measurements classified by expert obstetricians into normal, suspect, and pathological.", "focus": "Maternal Health / Fetal Monitoring", "dataTypes": "Cardiotocogram (CTG) sensor data, Expert labels", "modality": "CTG", "subjects": "2,126", "design": "Cross-sectional", "access": "Open", "accessBucket": "Open", "license": "CC BY 4.0", "repo": "UCI Machine Learning Repository", "url": "https://archive.ics.uci.edu/dataset/193/cardiotocography"}, {"name": "CAMELYON16 / CAMELYON17 (Breast Cancer Lymph Node Pathology)", "description": "Whole-slide histology images for detecting breast cancer metastases in lymph nodes. Grand Challenge benchmark.", "focus": "Breast Cancer / Pathology", "dataTypes": "Whole-slide pathology images, Pixel-level annotations", "modality": "Histopathology (WSI)", "subjects": "400+ slides", "design": "Multi-center retrospective", "access": "Open", "accessBucket": "Open", "license": "CC BY 4.0", "repo": "Grand Challenge / CAMELYON", "url": "https://camelyon17.grand-challenge.org/Data/"}, {"name": "All of Us Research Program", "description": "NIH precision medicine cohort with 800,000+ participants (majority women/minorities) with EHR, surveys, wearables, and genomics.", "focus": "General Women's Health / Precision Medicine", "dataTypes": "EHR, Surveys, Genomics (WGS), Wearable sensor data", "modality": "", "subjects": "800,000+", "design": "Longitudinal cohort", "access": "Registration Required (Registered Tier / Controlled Tier)", "accessBucket": "Registration Required", "license": "All of Us Data Use Policy", "repo": "NIH All of Us", "url": "https://www.researchallofus.org/"}, {"name": "UK Biobank (Women's Health Subset)", "description": "500,000-participant UK biobank with dedicated women's health data: menstruation, menopause, HRT, pregnancy history, breast/ovarian cancer.", "focus": "General Women's Health / Menopause / Reproductive", "dataTypes": "EHR, Questionnaires, Imaging (MRI, DXA), Genomics, Biospecimens", "modality": "MRI, DXA", "subjects": "273,000+ women", "design": "Prospective cohort", "access": "Application Required", "accessBucket": "Application Required", "license": "UK Biobank Access Agreement", "repo": "UK Biobank", "url": "https://www.ukbiobank.ac.uk/enable-your-research/apply-for-access"}, {"name": "NSFG (National Survey of Family Growth)", "description": "CDC survey tracking sexual behavior, fertility, contraception, pregnancy, and reproductive health for U.S. women and men.", "focus": "Reproductive Health / Fertility", "dataTypes": "Survey / interview data", "modality": "", "subjects": "~10,000 per cycle", "design": "Cross-sectional survey (repeated cycles since 1973)", "access": "Open", "accessBucket": "Open", "license": "Public domain (CDC)", "repo": "CDC / NCHS", "url": "https://www.cdc.gov/nchs/nsfg/index.htm"}, {"name": "BRFSS — Women's Health Module", "description": "CDC state-based telephone survey with women's health modules including mammography, Pap tests, and reproductive health.", "focus": "General Women's Health / Preventive Care", "dataTypes": "Survey data", "modality": "", "subjects": "400,000+ per year", "design": "Cross-sectional survey (annual)", "access": "Open", "accessBucket": "Open", "license": "Public domain (CDC)", "repo": "CDC / BRFSS", "url": "https://www.cdc.gov/brfss/index.html"}, {"name": "Maternal Health Risk Dataset (Kaggle)", "description": "1,014 records with age, blood pressure, glucose, body temperature, and heart rate for maternal health risk prediction.", "focus": "Maternal Health / Risk Prediction", "dataTypes": "Tabular clinical data, Risk labels", "modality": "", "subjects": "1,014", "design": "Retrospective", "access": "Open", "accessBucket": "Open", "license": "CC BY 4.0", "repo": "Kaggle / UCI", "url": "https://www.kaggle.com/datasets/csafrit2/maternal-health-risk-data"}, {"name": "HCMI-CMDC — NCI Cancer Model Development for the Human Cancer Model Initiative", "description": "NCI GDC project. Disease type: Transitional Cell Papillomas and Carcinomas, Nevi and Melanomas, Mature T- and NK-Cell Lymphomas, Squamous Cell Neoplasms, Osseous and Chondromatous Neoplasms, Neuroepitheliomatous Neoplasms, Myomatous Neoplasms, Epithelial Neoplasms, NOS, Malignant Lymphomas, NOS or Diffuse, Soft Tissue Tumors and Sarcomas, NOS, Complex Epithelial Neoplasms, Cystic, Mucinous and Serous Neoplasms, Miscellaneous Bone Tumors, Fibromatous Neoplasms, Acinar Cell Neoplasms, Blood Vessel Tumors, Ductal and Lobular Neoplasms, Adenomas and Adenocarcinomas, Gliomas, Synovial-like Neoplasms, Complex Mixed and Stromal Neoplasms, Lymphoid Leukemias. Primary site: Ovary, Hematopoietic and reticuloendothelial systems, Nasal cavity and middle ear, Other and ill-defined sites, Skin, Other and unspecified parts of biliary tract, Breast, Small intestine, Liver and intrahepatic bile ducts, Corpus uteri, Gallbladder, Stomach, Brain, Eye and adnexa, Bladder, Thyroid gland, Connective, subcutaneous and other soft tissues, Kidney, Other and unspecified parts of tongue, Larynx, Bones, joints and articular cartilage of other and unspecified sites, Adrenal gland, Colon, Other and unspecified parts of mouth, Rectum, Unknown, Lymph nodes, Uterus, NOS, Rectosigmoid junction, Bronchus and lung, Pancreas, Esophagus.", "focus": "Gynecologic Oncology", "dataTypes": "WGS, RNA-seq, DNA methylation, miRNA, Clinical / Biospecimen", "modality": "", "subjects": "805", "design": "Retrospective multi-omic", "access": "Open (GDC portal) / Controlled access for raw data (dbGaP)", "accessBucket": "Open", "license": "NIH GDC Data Use Agreement", "repo": "NCI GDC", "url": "https://portal.gdc.cancer.gov/projects/HCMI-CMDC"}, {"name": "CPTAC-3 — CPTAC-Brain, Head and Neck, Kidney, Lung, Pancreas, Uterus", "description": "NCI GDC project. Disease type: Transitional Cell Papillomas and Carcinomas, Epithelial Neoplasms, NOS, Complex Mixed and Stromal Neoplasms, Squamous Cell Neoplasms, Myeloid Leukemias, Gliomas, Nevi and Melanomas, Adenomas and Adenocarcinomas, Ductal and Lobular Neoplasms, Lipomatous Neoplasms, Not Applicable, Complex Epithelial Neoplasms. Primary site: Other and ill-defined sites, Other and unspecified urinary organs, Bronchus and lung, Other and unspecified parts of tongue, Brain, Other and ill-defined sites in lip, oral cavity and pharynx, Tonsil, Kidney, Breast, Gum, Larynx, Lip, Hematopoietic and reticuloendothelial systems, Pancreas, Stomach, Base of tongue, Other and unspecified parts of mouth, Uterus, NOS, Oropharynx, Colon, Unknown, Floor of mouth.", "focus": "Gynecologic Oncology", "dataTypes": "WGS, RNA-seq, DNA methylation, miRNA, Clinical / Biospecimen", "modality": "", "subjects": "1683", "design": "Retrospective multi-omic", "access": "Open (GDC portal) / Controlled access for raw data (dbGaP)", "accessBucket": "Open", "license": "NIH GDC Data Use Agreement", "repo": "NCI GDC", "url": "https://portal.gdc.cancer.gov/projects/CPTAC-3"}, {"name": "MATCH-B — Genomic Characterization CS-MATCH-0007 Arm B", "description": "NCI GDC project. Disease type: Neoplasms, NOS, Epithelial Neoplasms, NOS, Ductal and Lobular Neoplasms, Nerve Sheath Tumors, Transitional Cell Papillomas and Carcinomas, Adenomas and Adenocarcinomas. Primary site: Small intestine, Cervix uteri, Colon, Parotid gland, Ovary, Breast, Unknown, Skin, Liver and intrahepatic bile ducts, Renal pelvis, Prostate gland, Other and unspecified female genital organs, Rectosigmoid junction, Bladder, Rectum, Other and unspecified parts of biliary tract, Gallbladder.", "focus": "Gynecologic Oncology", "dataTypes": "WGS, RNA-seq, DNA methylation, miRNA, Clinical / Biospecimen", "modality": "", "subjects": "33", "design": "Retrospective multi-omic", "access": "Open (GDC portal) / Controlled access for raw data (dbGaP)", "accessBucket": "Open", "license": "NIH GDC Data Use Agreement", "repo": "NCI GDC", "url": "https://portal.gdc.cancer.gov/projects/MATCH-B"}, {"name": "CMI-ASC — Count Me In (CMI): The Angiosarcoma (ASC) Project", "description": "NCI GDC project. Disease type: Soft Tissue Tumors and Sarcomas, NOS. Primary site: Heart, mediastinum, and pleura, Bronchus and lung, Breast, Skin, Lymph nodes, Other and ill-defined digestive organs, Other and ill-defined sites, Bladder, Other and ill-defined sites within respiratory system and intrathoracic organs.", "focus": "Soft Tissue Tumors and Sarcomas, NOS", "dataTypes": "WGS, RNA-seq, DNA methylation, miRNA, Clinical / Biospecimen", "modality": "", "subjects": "36", "design": "Retrospective multi-omic", "access": "Open (GDC portal) / Controlled access for raw data (dbGaP)", "accessBucket": "Open", "license": "NIH GDC Data Use Agreement", "repo": "NCI GDC", "url": "https://portal.gdc.cancer.gov/projects/CMI-ASC"}, {"name": "MATCH-S1 — Genomic Characterization CS-MATCH-0007 Arm S1", "description": "NCI GDC project. Disease type: Soft Tissue Tumors and Sarcomas, NOS, Myomatous Neoplasms, Complex Mixed and Stromal Neoplasms, Neoplasms, NOS, Epithelial Neoplasms, NOS, Ductal and Lobular Neoplasms, Gliomas, Nerve Sheath Tumors, Squamous Cell Neoplasms, Adenomas and Adenocarcinomas. Primary site: Small intestine, Parotid gland, Colon, Corpus uteri, Ovary, Bronchus and lung, Breast, Peripheral nerves and autonomic nervous system, Skin, Stomach, Unknown, Liver and intrahepatic bile ducts, Other and ill-defined sites in lip, oral cavity and pharynx, Connective, subcutaneous and other soft tissues, Other and unspecified female genital organs, Rectum, Gallbladder, Brain.", "focus": "Gynecologic Oncology", "dataTypes": "WGS, RNA-seq, DNA methylation, miRNA, Clinical / Biospecimen", "modality": "", "subjects": "41", "design": "Retrospective multi-omic", "access": "Open (GDC portal) / Controlled access for raw data (dbGaP)", "accessBucket": "Open", "license": "NIH GDC Data Use Agreement", "repo": "NCI GDC", "url": "https://portal.gdc.cancer.gov/projects/MATCH-S1"}, {"name": "MATCH-W — Genomic Characterization CS-MATCH-0007 Arm W", "description": "NCI GDC project. Disease type: Cystic, Mucinous and Serous Neoplasms, Neoplasms, NOS, Epithelial Neoplasms, NOS, Ductal and Lobular Neoplasms, Gliomas, Transitional Cell Papillomas and Carcinomas, Squamous Cell Neoplasms, Adenomas and Adenocarcinomas. Primary site: Cervix uteri, Corpus uteri, Parotid gland, Thyroid gland, Bronchus and lung, Breast, Other and unspecified urinary organs, Liver and intrahepatic bile ducts, Rectum, Renal pelvis, Prostate gland, Other and unspecified female genital organs, Bladder, Anus and anal canal, Pancreas, Other and unspecified major salivary glands, Gallbladder, Brain.", "focus": "Gynecologic Oncology", "dataTypes": "WGS, RNA-seq, DNA methylation, miRNA, Clinical / Biospecimen", "modality": "", "subjects": "45", "design": "Retrospective multi-omic", "access": "Open (GDC portal) / Controlled access for raw data (dbGaP)", "accessBucket": "Open", "license": "NIH GDC Data Use Agreement", "repo": "NCI GDC", "url": "https://portal.gdc.cancer.gov/projects/MATCH-W"}, {"name": "MATCH-Z1D — Genomic Characterization CS-MATCH-0007 Arm Z1D", "description": "NCI GDC project. Disease type: Myomatous Neoplasms, Complex Mixed and Stromal Neoplasms, Cystic, Mucinous and Serous Neoplasms, Neoplasms, NOS, Ductal and Lobular Neoplasms, Gliomas, Squamous Cell Neoplasms, Adenomas and Adenocarcinomas. Primary site: Small intestine, Corpus uteri, Thyroid gland, Breast, Liver and intrahepatic bile ducts, Stomach, Uterus, NOS, Prostate gland, Other and unspecified female genital organs, Bones, joints and articular cartilage of other and unspecified sites, Esophagus, Other endocrine glands and related structures, Other and unspecified major salivary glands, Other and unspecified parts of biliary tract, Brain.", "focus": "Gynecologic Oncology", "dataTypes": "WGS, RNA-seq, DNA methylation, miRNA, Clinical / Biospecimen", "modality": "", "subjects": "36", "design": "Retrospective multi-omic", "access": "Open (GDC portal) / Controlled access for raw data (dbGaP)", "accessBucket": "Open", "license": "NIH GDC Data Use Agreement", "repo": "NCI GDC", "url": "https://portal.gdc.cancer.gov/projects/MATCH-Z1D"}, {"name": "MATCH-Z1A — Genomic Characterization CS-MATCH-0007 Arm Z1A", "description": "NCI GDC project. Disease type: Mesothelial Neoplasms, Neoplasms, NOS, Epithelial Neoplasms, NOS, Transitional Cell Papillomas and Carcinomas, Squamous Cell Neoplasms, Adenomas and Adenocarcinomas. Primary site: Corpus uteri, Colon, Ovary, Thyroid gland, Trachea, Heart, mediastinum, and pleura, Liver and intrahepatic bile ducts, Unknown, Connective, subcutaneous and other soft tissues, Other and ill-defined digestive organs, Bones, joints and articular cartilage of other and unspecified sites, Rectosigmoid junction, Bladder, Rectum.", "focus": "Gynecologic Oncology", "dataTypes": "WGS, RNA-seq, DNA methylation, miRNA, Clinical / Biospecimen", "modality": "", "subjects": "45", "design": "Retrospective multi-omic", "access": "Open (GDC portal) / Controlled access for raw data (dbGaP)", "accessBucket": "Open", "license": "NIH GDC Data Use Agreement", "repo": "NCI GDC", "url": "https://portal.gdc.cancer.gov/projects/MATCH-Z1A"}, {"name": "MATCH-Y — Genomic Characterization CS-MATCH-0007 Arm Y", "description": "NCI GDC project. Disease type: Myomatous Neoplasms, Cystic, Mucinous and Serous Neoplasms, Fibromatous Neoplasms, Neoplasms, NOS, Epithelial Neoplasms, NOS, Ductal and Lobular Neoplasms, Transitional Cell Papillomas and Carcinomas, Squamous Cell Neoplasms, Adenomas and Adenocarcinomas. Primary site: Corpus uteri, Cervix uteri, Bronchus and lung, Breast, Skin, Retroperitoneum and peritoneum, Connective, subcutaneous and other soft tissues, Renal pelvis, Other and unspecified female genital organs, Pancreas.", "focus": "Gynecologic Oncology", "dataTypes": "WGS, RNA-seq, DNA methylation, miRNA, Clinical / Biospecimen", "modality": "", "subjects": "31", "design": "Retrospective multi-omic", "access": "Open (GDC portal) / Controlled access for raw data (dbGaP)", "accessBucket": "Open", "license": "NIH GDC Data Use Agreement", "repo": "NCI GDC", "url": "https://portal.gdc.cancer.gov/projects/MATCH-Y"}, {"name": "MATCH-U — Genomic Characterization CS-MATCH-0007 Arm U", "description": "NCI GDC project. Disease type: Mesothelial Neoplasms, Fibromatous Neoplasms, Neoplasms, NOS, Epithelial Neoplasms, NOS, Nerve Sheath Tumors, Squamous Cell Neoplasms, Adenomas and Adenocarcinomas. Primary site: Cervix uteri, Ovary, Heart, mediastinum, and pleura, Bronchus and lung, Liver and intrahepatic bile ducts, Meninges, Connective, subcutaneous and other soft tissues, Other and unspecified female genital organs, Kidney, Other and unspecified parts of biliary tract, Brain.", "focus": "Gynecologic Oncology", "dataTypes": "WGS, RNA-seq, DNA methylation, miRNA, Clinical / Biospecimen", "modality": "", "subjects": "23", "design": "Retrospective multi-omic", "access": "Open (GDC portal) / Controlled access for raw data (dbGaP)", "accessBucket": "Open", "license": "NIH GDC Data Use Agreement", "repo": "NCI GDC", "url": "https://portal.gdc.cancer.gov/projects/MATCH-U"}, {"name": "MATCH-Z1B — Genomic Characterization CS-MATCH-0007 Arm Z1B", "description": "NCI GDC project. Disease type: Squamous Cell Neoplasms, Adenomas and Adenocarcinomas, Transitional Cell Papillomas and Carcinomas, Neoplasms, NOS. Primary site: Other and unspecified parts of tongue, Corpus uteri, Parotid gland, Colon, Oropharynx, Other and unspecified parts of mouth, Bronchus and lung, Unknown, Stomach, Vulva, Prostate gland, Bladder, Pancreas, Gallbladder, Larynx, Esophagus.", "focus": "Gynecologic Oncology", "dataTypes": "WGS, RNA-seq, DNA methylation, miRNA, Clinical / Biospecimen", "modality": "", "subjects": "29", "design": "Retrospective multi-omic", "access": "Open (GDC portal) / Controlled access for raw data (dbGaP)", "accessBucket": "Open", "license": "NIH GDC Data Use Agreement", "repo": "NCI GDC", "url": "https://portal.gdc.cancer.gov/projects/MATCH-Z1B"}, {"name": "FM-AD — Foundation Medicine Adult Cancer Clinical Dataset (FM-AD)", "description": "NCI GDC project. Disease type: Complex Mixed and Stromal Neoplasms, Neuroepitheliomatous Neoplasms, Specialized Gonadal Neoplasms, Squamous Cell Neoplasms, Thymic Epithelial Neoplasms, Adnexal and Skin Appendage Neoplasms, Nevi and Melanomas, Meningiomas, Mesothelial Neoplasms, Adenomas and Adenocarcinomas, Epithelial Neoplasms, NOS, Ductal and Lobular Neoplasms, Transitional Cell Papillomas and Carcinomas, Complex Epithelial Neoplasms, Germ Cell Neoplasms, Basal Cell Neoplasms, Mucoepidermoid Neoplasms, Paragangliomas and Glomus Tumors, Cystic, Mucinous and Serous Neoplasms, Miscellaneous Tumors, Acinar Cell Neoplasms, Gliomas, Not Reported. Primary site: Ovary, Nasopharynx, Breast, Liver and intrahepatic bile ducts, Skin, Retroperitoneum and peritoneum, Peripheral nerves and autonomic nervous system, Other and ill-defined digestive organs, Other and unspecified female genital organs, Eye and adnexa, Small intestine, Vagina, Thyroid gland, Heart, mediastinum, and pleura, Unknown, Spinal cord, cranial nerves, and other parts of central nervous system, Uterus, NOS, Anus and anal canal, Other endocrine glands and related structures, Kidney, Rectum, Other and unspecified parts of biliary tract, Colon, Thymus, Other and unspecified urinary organs, Stomach, Prostate gland, Bladder, Pancreas, Esophagus, Gallbladder, Testis, Cervix uteri, Trachea, Bronchus and lung, Vulva, Ureter, Other and ill-defined sites, Penis, Other and unspecified major salivary glands, Not Reported, Adrenal gland.", "focus": "Gynecologic Oncology", "dataTypes": "WGS, RNA-seq, DNA methylation, miRNA, Clinical / Biospecimen", "modality": "", "subjects": "18004", "design": "Retrospective multi-omic", "access": "Open (GDC portal) / Controlled access for raw data (dbGaP)", "accessBucket": "Open", "license": "NIH GDC Data Use Agreement", "repo": "NCI GDC", "url": "https://portal.gdc.cancer.gov/projects/FM-AD"}, {"name": "MATCH-I — Genomic Characterization CS-MATCH-0007 Arm I", "description": "NCI GDC project. Disease type: Soft Tissue Tumors and Sarcomas, NOS, Myomatous Neoplasms, Nevi and Melanomas, Neoplasms, NOS, Epithelial Neoplasms, NOS, Gliomas, Squamous Cell Neoplasms, Adenomas and Adenocarcinomas, Osseous and Chondromatous Neoplasms. Primary site: Corpus uteri, Accessory sinuses, Ovary, Tonsil, Nasopharynx, Liver and intrahepatic bile ducts, Skin, Retroperitoneum and peritoneum, Other and unspecified female genital organs, Brain, Vagina, Unknown, Rectosigmoid junction, Anus and anal canal, Kidney, Rectum, Base of tongue, Colon, Prostate gland, Esophagus, Cervix uteri, Oropharynx, Other and unspecified parts of mouth, Bronchus and lung, Connective, subcutaneous and other soft tissues, Other and unspecified major salivary glands.", "focus": "Gynecologic Oncology", "dataTypes": "WGS, RNA-seq, DNA methylation, miRNA, Clinical / Biospecimen", "modality": "", "subjects": "60", "design": "Retrospective multi-omic", "access": "Open (GDC portal) / Controlled access for raw data (dbGaP)", "accessBucket": "Open", "license": "NIH GDC Data Use Agreement", "repo": "NCI GDC", "url": "https://portal.gdc.cancer.gov/projects/MATCH-I"}, {"name": "MATCH-P — Genomic Characterization CS-MATCH-0007 Arm P", "description": "NCI GDC project. Disease type: Mesothelial Neoplasms, Complex Mixed and Stromal Neoplasms, Nevi and Melanomas, Cystic, Mucinous and Serous Neoplasms, Neoplasms, NOS, Epithelial Neoplasms, NOS, Ductal and Lobular Neoplasms, Transitional Cell Papillomas and Carcinomas, Squamous Cell Neoplasms, Adenomas and Adenocarcinomas. Primary site: Small intestine, Colon, Cervix uteri, Corpus uteri, Parotid gland, Bronchus and lung, Breast, Liver and intrahepatic bile ducts, Skin, Connective, subcutaneous and other soft tissues, Prostate gland, Bladder, Anus and anal canal, Gallbladder, Adrenal gland.", "focus": "Gynecologic Oncology", "dataTypes": "WGS, RNA-seq, DNA methylation, miRNA, Clinical / Biospecimen", "modality": "", "subjects": "28", "design": "Retrospective multi-omic", "access": "Open (GDC portal) / Controlled access for raw data (dbGaP)", "accessBucket": "Open", "license": "NIH GDC Data Use Agreement", "repo": "NCI GDC", "url": "https://portal.gdc.cancer.gov/projects/MATCH-P"}, {"name": "MATCH-R — Genomic Characterization CS-MATCH-0007 Arm R", "description": "NCI GDC project. Disease type: Mature T- and NK-Cell Lymphomas, Mature B-Cell Lymphomas, Nevi and Melanomas, Neoplasms, NOS, Epithelial Neoplasms, NOS, Ductal and Lobular Neoplasms, Squamous Cell Neoplasms, Adenomas and Adenocarcinomas, Osseous and Chondromatous Neoplasms. Primary site: Colon, Corpus uteri, Bronchus and lung, Breast, Unknown, Skin, Vulva, Renal pelvis, Prostate gland, Other and unspecified female genital organs, Rectosigmoid junction, Rectum.", "focus": "Gynecologic Oncology", "dataTypes": "WGS, RNA-seq, DNA methylation, miRNA, Clinical / Biospecimen", "modality": "", "subjects": "28", "design": "Retrospective multi-omic", "access": "Open (GDC portal) / Controlled access for raw data (dbGaP)", "accessBucket": "Open", "license": "NIH GDC Data Use Agreement", "repo": "NCI GDC", "url": "https://portal.gdc.cancer.gov/projects/MATCH-R"}, {"name": "MATCH-N — Genomic Characterization CS-MATCH-0007 Arm N", "description": "NCI GDC project. Disease type: Myomatous Neoplasms, Complex Mixed and Stromal Neoplasms, Cystic, Mucinous and Serous Neoplasms, Neoplasms, NOS, Epithelial Neoplasms, NOS, Gliomas, Ductal and Lobular Neoplasms, Squamous Cell Neoplasms, Adenomas and Adenocarcinomas. Primary site: Small intestine, Base of tongue, Corpus uteri, Cervix uteri, Oropharynx, Bronchus and lung, Breast, Unknown, Prostate gland, Kidney, Brain.", "focus": "Gynecologic Oncology", "dataTypes": "WGS, RNA-seq, DNA methylation, miRNA, Clinical / Biospecimen", "modality": "", "subjects": "21", "design": "Retrospective multi-omic", "access": "Open (GDC portal) / Controlled access for raw data (dbGaP)", "accessBucket": "Open", "license": "NIH GDC Data Use Agreement", "repo": "NCI GDC", "url": "https://portal.gdc.cancer.gov/projects/MATCH-N"}, {"name": "MATCH-Q — Genomic Characterization CS-MATCH-0007 Arm Q", "description": "NCI GDC project. Disease type: Cystic, Mucinous and Serous Neoplasms, Neoplasms, NOS, Epithelial Neoplasms, NOS, Squamous Cell Neoplasms, Adenomas and Adenocarcinomas. Primary site: Other and unspecified male genital organs, Colon, Corpus uteri, Parotid gland, Cervix uteri, Ovary, Bronchus and lung, Other and ill-defined digestive organs, Other and unspecified female genital organs, Rectosigmoid junction, Rectum, Other and unspecified parts of biliary tract, Gallbladder.", "focus": "Gynecologic Oncology", "dataTypes": "WGS, RNA-seq, DNA methylation, miRNA, Clinical / Biospecimen", "modality": "", "subjects": "35", "design": "Retrospective multi-omic", "access": "Open (GDC portal) / Controlled access for raw data (dbGaP)", "accessBucket": "Open", "license": "NIH GDC Data Use Agreement", "repo": "NCI GDC", "url": "https://portal.gdc.cancer.gov/projects/MATCH-Q"}, {"name": "MATCH-H — Genomic Characterization CS-MATCH-0007 Arm H", "description": "NCI GDC project. Disease type: Gliomas, Adenomas and Adenocarcinomas, Neoplasms, NOS, Epithelial Neoplasms, NOS. Primary site: Colon, Ovary, Bronchus and lung, Liver and intrahepatic bile ducts, Unknown, Other and ill-defined digestive organs, Bones, joints and articular cartilage of other and unspecified sites, Other and unspecified female genital organs, Anus and anal canal, Pancreas, Brain.", "focus": "Gynecologic Oncology", "dataTypes": "WGS, RNA-seq, DNA methylation, miRNA, Clinical / Biospecimen", "modality": "", "subjects": "21", "design": "Retrospective multi-omic", "access": "Open (GDC portal) / Controlled access for raw data (dbGaP)", "accessBucket": "Open", "license": "NIH GDC Data Use Agreement", "repo": "NCI GDC", "url": "https://portal.gdc.cancer.gov/projects/MATCH-H"}, {"name": "CMI-MBC — Count Me In (CMI): The Metastatic Breast Cancer (MBC) Project", "description": "NCI GDC project. Disease type: Ductal and Lobular Neoplasms. Primary site: Breast.", "focus": "Ductal and Lobular Neoplasms", "dataTypes": "WGS, RNA-seq, DNA methylation, miRNA, Clinical / Biospecimen", "modality": "", "subjects": "200", "design": "Retrospective multi-omic", "access": "Open (GDC portal) / Controlled access for raw data (dbGaP)", "accessBucket": "Open", "license": "NIH GDC Data Use Agreement", "repo": "NCI GDC", "url": "https://portal.gdc.cancer.gov/projects/CMI-MBC"}, {"name": "MATCH-Z1I — Genomic Characterization CS-MATCH-0007 Arm Z1I", "description": "NCI GDC project. Disease type: Nevi and Melanomas, Neoplasms, NOS, Epithelial Neoplasms, NOS, Ductal and Lobular Neoplasms, Squamous Cell Neoplasms, Adenomas and Adenocarcinomas. Primary site: Parotid gland, Ovary, Bronchus and lung, Breast, Unknown, Other and ill-defined sites in lip, oral cavity and pharynx, Other and unspecified female genital organs, Rectosigmoid junction, Anus and anal canal, Pancreas, Rectum, Gallbladder.", "focus": "Gynecologic Oncology", "dataTypes": "WGS, RNA-seq, DNA methylation, miRNA, Clinical / Biospecimen", "modality": "", "subjects": "26", "design": "Retrospective multi-omic", "access": "Open (GDC portal) / Controlled access for raw data (dbGaP)", "accessBucket": "Open", "license": "NIH GDC Data Use Agreement", "repo": "NCI GDC", "url": "https://portal.gdc.cancer.gov/projects/MATCH-Z1I"}, {"name": "CPTAC-2 — CPTAC-Breast, Colon, Ovary", "description": "NCI GDC project. Disease type: Adenomas and Adenocarcinomas, Cystic, Mucinous and Serous Neoplasms, Ductal and Lobular Neoplasms, Squamous Cell Neoplasms, Not Reported. Primary site: Colon, Ovary, Breast, Retroperitoneum and peritoneum, Other and unspecified female genital organs, Rectum.", "focus": "Gynecologic Oncology", "dataTypes": "WGS, RNA-seq, DNA methylation, miRNA, Clinical / Biospecimen", "modality": "", "subjects": "342", "design": "Retrospective multi-omic", "access": "Open (GDC portal) / Controlled access for raw data (dbGaP)", "accessBucket": "Open", "license": "NIH GDC Data Use Agreement", "repo": "NCI GDC", "url": "https://portal.gdc.cancer.gov/projects/CPTAC-2"}, {"name": "CCDI-MCI — Molecular Characterization Initiative (MCI)", "description": "NCI GDC project. Disease type: Nevi and Melanomas, Specialized Gonadal Neoplasms, Cystic, Mucinous and Serous Neoplasms, Granular Cell Tumors and Alveolar Soft Part Sarcomas, Leukemias, NOS, Odontogenic Tumors, Thymic Epithelial Neoplasms, Soft Tissue Tumors and Sarcomas, NOS, Epithelial Neoplasms, NOS, Malignant Lymphomas, NOS or Diffuse, Gliomas, Neoplasms, NOS, Meningiomas, Acinar Cell Neoplasms, Adenomas and Adenocarcinomas. Primary site: Unknown, Other and unspecified urinary organs, Heart, mediastinum, and pleura, Other and unspecified parts of mouth, Palate, Eye and adnexa, Bronchus and lung, Pancreas, Bones, joints and articular cartilage of other and unspecified sites, Breast, Other and ill-defined sites, Adrenal gland, Ovary, Colon, Thymus, Renal pelvis, Thyroid gland, Esophagus, Spinal cord, cranial nerves, and other parts of central nervous system, Other and unspecified male genital organs, Brain, Meninges, Cervix uteri, Vagina, Other and ill-defined sites in lip, oral cavity and pharynx, Small intestine, Other and ill-defined sites within respiratory system and intrathoracic organs, Lip, Base of tongue, Stomach, Bladder, Connective, subcutaneous and other soft tissues, Peripheral nerves and autonomic nervous system, Other endocrine glands and related structures, Bones, joints and articular cartilage of limbs, Nasopharynx, Oropharynx, Lymph nodes, Rectum, Other and ill-defined digestive organs, Prostate gland, Larynx, Retroperitoneum and peritoneum, Accessory sinuses, Other and unspecified female genital organs, Rectosigmoid junction, Skin, Testis, Nasal cavity and middle ear.", "focus": "Gynecologic Oncology", "dataTypes": "WGS, RNA-seq, DNA methylation, miRNA, Clinical / Biospecimen", "modality": "", "subjects": "3093", "design": "Retrospective multi-omic", "access": "Open (GDC portal) / Controlled access for raw data (dbGaP)", "accessBucket": "Open", "license": "NIH GDC Data Use Agreement", "repo": "NCI GDC", "url": "https://portal.gdc.cancer.gov/projects/CCDI-MCI"}, {"name": "EXCEPTIONAL_RESPONDERS-ER — Exceptional Responders", "description": "NCI GDC project. Disease type: Myomatous Neoplasms, Adenomas and Adenocarcinomas, Gliomas, Complex Mixed and Stromal Neoplasms, Ductal and Lobular Neoplasms, Squamous Cell Neoplasms, Neoplasms, NOS, Nevi and Melanomas, Epithelial Neoplasms, NOS. Primary site: Colon, Connective, subcutaneous and other soft tissues, Kidney, Bladder, Stomach, Bronchus and lung, Other and ill-defined sites, Other and ill-defined digestive organs, Pancreas, Uterus, NOS, Esophagus, Other and unspecified female genital organs, Unknown, Other and unspecified parts of biliary tract, Rectum, Skin, Breast, Anus and anal canal, Ovary, Brain.", "focus": "Gynecologic Oncology", "dataTypes": "WGS, RNA-seq, DNA methylation, miRNA, Clinical / Biospecimen", "modality": "", "subjects": "84", "design": "Retrospective multi-omic", "access": "Open (GDC portal) / Controlled access for raw data (dbGaP)", "accessBucket": "Open", "license": "NIH GDC Data Use Agreement", "repo": "NCI GDC", "url": "https://portal.gdc.cancer.gov/projects/EXCEPTIONAL_RESPONDERS-ER"}, {"name": "TARGET-NBL — Neuroblastoma", "description": "NCI GDC project. Disease type: Neuroepitheliomatous Neoplasms, Not Applicable. Primary site: Heart, mediastinum, and pleura, Bones, joints and articular cartilage of limbs, Connective, subcutaneous and other soft tissues, Kidney, Liver and intrahepatic bile ducts, Lymph nodes, Spinal cord, cranial nerves, and other parts of central nervous system, Stomach, Other and ill-defined sites, Other endocrine glands and related structures, Bones, joints and articular cartilage of other and unspecified sites, Renal pelvis, Peripheral nerves and autonomic nervous system, Retroperitoneum and peritoneum, Uterus, NOS, Unknown, Adrenal gland, Skin, Hematopoietic and reticuloendothelial systems, Meninges.", "focus": "Neuroepitheliomatous Neoplasms, Not Applicable", "dataTypes": "WGS, RNA-seq, DNA methylation, miRNA, Clinical / Biospecimen", "modality": "", "subjects": "1132", "design": "Retrospective multi-omic", "access": "Open (GDC portal) / Controlled access for raw data (dbGaP)", "accessBucket": "Open", "license": "NIH GDC Data Use Agreement", "repo": "NCI GDC", "url": "https://portal.gdc.cancer.gov/projects/TARGET-NBL"}, {"name": "APOLLO-OV — APOLLO2: Proteogenomic characterization of ovarian serous cystadenocarcinoma", "description": "NCI GDC project. Disease type: Epithelial Neoplasms, NOS. Primary site: Ovary, Retroperitoneum and peritoneum.", "focus": "Epithelial Neoplasms, NOS", "dataTypes": "WGS, RNA-seq, DNA methylation, miRNA, Clinical / Biospecimen", "modality": "", "subjects": "70", "design": "Retrospective multi-omic", "access": "Open (GDC portal) / Controlled access for raw data (dbGaP)", "accessBucket": "Open", "license": "NIH GDC Data Use Agreement", "repo": "NCI GDC", "url": "https://portal.gdc.cancer.gov/projects/APOLLO-OV"}, {"name": "CGCI-HTMCP-CC — HIV+ Tumor Molecular Characterization Project - Cervical Cancer", "description": "NCI GDC project. Disease type: Squamous Cell Neoplasms, Adenomas and Adenocarcinomas, Complex Epithelial Neoplasms, Epithelial Neoplasms, NOS. Primary site: Cervix uteri.", "focus": "Gynecologic Oncology", "dataTypes": "WGS, RNA-seq, DNA methylation, miRNA, Clinical / Biospecimen", "modality": "", "subjects": "212", "design": "Retrospective multi-omic", "access": "Open (GDC portal) / Controlled access for raw data (dbGaP)", "accessBucket": "Open", "license": "NIH GDC Data Use Agreement", "repo": "NCI GDC", "url": "https://portal.gdc.cancer.gov/projects/CGCI-HTMCP-CC"}, {"name": "TCGA-DLBC — Lymphoid Neoplasm Diffuse Large B-cell Lymphoma", "description": "NCI GDC project. Disease type: Mature B-Cell Lymphomas, Not Reported. Primary site: Colon, Retroperitoneum and peritoneum, Heart, mediastinum, and pleura, Breast, Bones, joints and articular cartilage of other and unspecified sites, Lymph nodes, Small intestine, Stomach, Testis, Brain, Connective, subcutaneous and other soft tissues, Thyroid gland, Hematopoietic and reticuloendothelial systems, Other and unspecified major salivary glands.", "focus": "Mature B-Cell Lymphomas, Not Reported", "dataTypes": "WGS, RNA-seq, DNA methylation, miRNA, Clinical / Biospecimen", "modality": "", "subjects": "58", "design": "Retrospective multi-omic", "access": "Open (GDC portal) / Controlled access for raw data (dbGaP)", "accessBucket": "Open", "license": "NIH GDC Data Use Agreement", "repo": "NCI GDC", "url": "https://portal.gdc.cancer.gov/projects/TCGA-DLBC"}, {"name": "TCGA-SKCM — Skin Cutaneous Melanoma", "description": "NCI GDC project. Disease type: Nevi and Melanomas. Primary site: Colon, Spinal cord, cranial nerves, and other parts of central nervous system, Vulva, Skin, Vagina, Bones, joints and articular cartilage of other and unspecified sites, Small intestine, Connective, subcutaneous and other soft tissues, Nasal cavity and middle ear, Anus and anal canal, Liver and intrahepatic bile ducts, Bronchus and lung, Other and ill-defined sites, Adrenal gland, Corpus uteri, Parotid gland, Retroperitoneum and peritoneum, Breast, Lymph nodes, Brain.", "focus": "Nevi and Melanomas", "dataTypes": "WGS, RNA-seq, DNA methylation, miRNA, Clinical / Biospecimen", "modality": "", "subjects": "470", "design": "Retrospective multi-omic", "access": "Open (GDC portal) / Controlled access for raw data (dbGaP)", "accessBucket": "Open", "license": "NIH GDC Data Use Agreement", "repo": "NCI GDC", "url": "https://portal.gdc.cancer.gov/projects/TCGA-SKCM"}, {"name": "TCGA-SARC — Sarcoma", "description": "NCI GDC project. Disease type: Fibromatous Neoplasms, Myomatous Neoplasms, Nerve Sheath Tumors, Synovial-like Neoplasms, Soft Tissue Tumors and Sarcomas, NOS, Lipomatous Neoplasms. Primary site: Retroperitoneum and peritoneum, Colon, Other and unspecified male genital organs, Bones, joints and articular cartilage of limbs, Meninges, Stomach, Other and unspecified parts of tongue, Connective, subcutaneous and other soft tissues, Uterus, NOS, Kidney, Peripheral nerves and autonomic nervous system, Ovary, Corpus uteri.", "focus": "Gynecologic Oncology", "dataTypes": "WGS, RNA-seq, DNA methylation, miRNA, Clinical / Biospecimen", "modality": "", "subjects": "261", "design": "Retrospective multi-omic", "access": "Open (GDC portal) / Controlled access for raw data (dbGaP)", "accessBucket": "Open", "license": "NIH GDC Data Use Agreement", "repo": "NCI GDC", "url": "https://portal.gdc.cancer.gov/projects/TCGA-SARC"}, {"name": "acrin_6698", "description": "The American College of Radiology Imaging Network (ACRIN) trial 6698 was a multi-center study to evaluate the effectiveness of quantitative diffusion weighted imaging (DWI) for assessing breast cancer response to neoadjuvant chemotherapy (NAC).   ACRIN 6698 was performed as a sub-study of the ongoin", "focus": "Breast Cancer", "dataTypes": "DICOM imaging, Clinical metadata, Segmentation annotations", "modality": "MR, SEG", "subjects": "385", "design": "", "access": "Open (Google Cloud / AWS)", "accessBucket": "Open", "license": "CC-BY or collection-specific", "repo": "NIH Imaging Data Commons (IDC)", "url": "https://doi.org/10.7937/tcia.kk02-6d95"}, {"name": "acrin_contralateral_breast_mr", "description": "Even after careful clinical and mammographic evaluation, cancer is found in the contralateral breast in up to 10% of women who have received treatment for unilateral breast cancer. ACRIN 6667 was conducted to determine whether magnetic resonance imaging (MRI) could improve on clinical breast examina", "focus": "Breast Cancer", "dataTypes": "DICOM imaging, Clinical metadata, Segmentation annotations", "modality": "CR, MR", "subjects": "984", "design": "", "access": "Open (Google Cloud / AWS)", "accessBucket": "Open", "license": "CC-BY or collection-specific", "repo": "NIH Imaging Data Commons (IDC)", "url": "https://doi.org/10.7937/q1ee-j082"}, {"name": "acrin_flt_breast", "description": "ACRIN 6688 , a [18F]-fluorothymidine (FLT) imaging study using positron emission tomography (PET), was designed to evaluate the relationship between [18F] FLT uptake parameters and pathologic complete response to neoadjuvant therapy of the primary tumor in patients with locally advanced breast cance", "focus": "Breast Cancer", "dataTypes": "DICOM imaging, Clinical metadata, Segmentation annotations", "modality": "CT, OT, PT", "subjects": "83", "design": "", "access": "Open (Google Cloud / AWS)", "accessBucket": "Open", "license": "CC-BY or collection-specific", "repo": "NIH Imaging Data Commons (IDC)", "url": "https://doi.org/10.7937/k9/tcia.2017.ol20zmxg"}, {"name": "advanced_mri_breast_lesions", "description": "The application of deep-learning methods to breast MRI has a potential to improve diagnosis as well as predict pathological features of the tumors and their response to therapy, and is currently widely investigated. Standard contrast-enhanced MRI of the breast provides high sensitivity but variable ", "focus": "Breast Cancer", "dataTypes": "DICOM imaging, Clinical metadata, Segmentation annotations", "modality": "MR, SEG", "subjects": "632", "design": "", "access": "Open (Google Cloud / AWS)", "accessBucket": "Open", "license": "CC-BY or collection-specific", "repo": "NIH Imaging Data Commons (IDC)", "url": "https://doi.org/10.7937/c7x1-yn57"}, {"name": "breast_cancer_screening_dbt", "description": "Breast cancer is among the most common cancers and a common cause of death among women. Here, we share a curated dataset of digital breast tomosynthesis images that includes normal, actionable, biopsy-proven benign, and biopsy-proven cancer cases.  The dataset contains four components: (1) DICOM ima", "focus": "Breast Cancer, Non-Cancer", "dataTypes": "DICOM imaging, Clinical metadata, Segmentation annotations", "modality": "MG", "subjects": "5060", "design": "", "access": "Open (Google Cloud / AWS)", "accessBucket": "Open", "license": "CC-BY or collection-specific", "repo": "NIH Imaging Data Commons (IDC)", "url": "https://doi.org/10.7937/e4wt-cd02"}, {"name": "breast_diagnosis", "description": "The Breast-Diagnosis collection contains cases that are high-risk normals, DCIS, fibroids and lobular carcinomas. Each case has 3 or more distinct MR pulse sequences from a Phillips 1.5 T (usual sequences are labeled T2, STIR and BLISS but may occasionally include other pulse sequences and digital m", "focus": "Breast Cancer", "dataTypes": "DICOM imaging, Clinical metadata, Segmentation annotations", "modality": "CT, MG, MR, PT, SR", "subjects": "88", "design": "", "access": "Open (Google Cloud / AWS)", "accessBucket": "Open", "license": "CC-BY or collection-specific", "repo": "NIH Imaging Data Commons (IDC)", "url": "https://doi.org/10.7937/k9/tcia.2015.sdnrqxxr https://doi.org/10.7937/tcia.2019.wgllssg1"}, {"name": "breast_mri_nact_pilot", "description": "This pilot study to investigate the use of serial DCE MRI examinations during neoadjuvant chemotherapy (NACT) for invasive breast cancer recruited 68 patients with stage II or III locally advanced breast cancer. L ongitudinal DCE MRI studies of 64 patients are available. Please see the wiki page Bre", "focus": "Breast Cancer", "dataTypes": "DICOM imaging, Clinical metadata, Segmentation annotations", "modality": "MR, SEG, SR", "subjects": "64", "design": "", "access": "Open (Google Cloud / AWS)", "accessBucket": "Open", "license": "CC-BY or collection-specific", "repo": "NIH Imaging Data Commons (IDC)", "url": "https://doi.org/10.7937/tcia.2019.wgllssg1 https://doi.org/10.7937/k9/tcia.2016.qhsyhjky"}, {"name": "cbis_ddsm", "description": "This CBIS-DDSM (Curated Breast Imaging Subset of DDSM) is an updated and standardized version of the Digital Database for Screening Mammography (DDSM) .  The DDSM is a database of 2,620 scanned film mammography studies. It contains normal, benign, and malignant cases with verified pathology informat", "focus": "Breast Cancer, Non-Cancer", "dataTypes": "DICOM imaging, Clinical metadata, Segmentation annotations", "modality": "MG", "subjects": "6671", "design": "", "access": "Open (Google Cloud / AWS)", "accessBucket": "Open", "license": "CC-BY or collection-specific", "repo": "NIH Imaging Data Commons (IDC)", "url": "https://doi.org/10.7937/k9/tcia.2016.7o02s9cy"}, {"name": "cc_tumor_heterogeneity", "description": "The functional and biological properties of the tumor microenvironment are fundamentally important determinants of tumor response and therapy outcome in cancer. Oxygenation status and vascularity are known to influence radiation response, and molecular energy metabolism and proliferation impact on r", "focus": "Cervical Cancer", "dataTypes": "DICOM imaging, Clinical metadata, Segmentation annotations", "modality": "CT, MR, PT, REG, RTSTRUCT", "subjects": "23", "design": "", "access": "Open (Google Cloud / AWS)", "accessBucket": "Open", "license": "CC-BY or collection-specific", "repo": "NIH Imaging Data Commons (IDC)", "url": "https://doi.org/10.7937/erz5-qz59"}, {"name": "cmb_brca", "description": "The Cancer Moonshot Biobank is a National Cancer Institute initiative to support current and future investigations into drug resistance and sensitivity and other NCI-sponsored cancer research initiatives, with an aim of improving researchers' understanding of cancer and how to intervene in cancer in", "focus": "Breast Invasive Carcinoma", "dataTypes": "DICOM imaging, Clinical metadata, Segmentation annotations", "modality": "CT, MG, MR, PT, US, SM", "subjects": "78", "design": "", "access": "Open (Google Cloud / AWS)", "accessBucket": "Open", "license": "CC-BY or collection-specific", "repo": "NIH Imaging Data Commons (IDC)", "url": "https://doi.org/10.7937/dx22-8j71 https://doi.org/10.5281/zenodo.13993761"}, {"name": "cmb_ov", "description": "The Cancer Moonshot Biobank is a National Cancer Institute initiative to support current and future investigations into drug resistance and sensitivity and other NCI-sponsored cancer research initiatives, with an aim of improving researchers'' understanding of cancer and how to intervene in cancer i", "focus": "Ovarian Cancer", "dataTypes": "DICOM imaging, Clinical metadata, Segmentation annotations", "modality": "SM, CT", "subjects": "31", "design": "", "access": "Open (Google Cloud / AWS)", "accessBucket": "Open", "license": "CC-BY or collection-specific", "repo": "NIH Imaging Data Commons (IDC)", "url": "https://doi.org/10.7937/4nx6-e061 https://doi.org/10.5281/zenodo.13993796"}, {"name": "cmmd", "description": "This collection contains clinical data and 3,728 mammographies (MG) from 1,775 patients, with biopsy-confirmed benign or malignant breast tumors. For a subset of 749 patients (D2-####), molecular subtype is included. Please see the CMMD wiki page for further detail and associated metadata.", "focus": "Breast Cancer", "dataTypes": "DICOM imaging, Clinical metadata, Segmentation annotations", "modality": "MG", "subjects": "1775", "design": "", "access": "Open (Google Cloud / AWS)", "accessBucket": "Open", "license": "CC-BY or collection-specific", "repo": "NIH Imaging Data Commons (IDC)", "url": "https://doi.org/10.7937/tcia.eqde-4b16"}, {"name": "cptac_brca", "description": "This collection contains subjects from the National Cancer Institute’s Clinical Proteomic Tumor Analysis Consortium CPTAC Breast Invasive Carcinoma cohort. CPTAC is a national effort to accelerate the understanding of the molecular basis of cancer through the application of large-scale proteome and ", "focus": "Breast Cancer", "dataTypes": "DICOM imaging, Clinical metadata, Segmentation annotations", "modality": "SM", "subjects": "198", "design": "", "access": "Open (Google Cloud / AWS)", "accessBucket": "Open", "license": "CC-BY or collection-specific", "repo": "NIH Imaging Data Commons (IDC)", "url": "https://doi.org/10.5281/zenodo.12666759"}, {"name": "cptac_ov", "description": "This collection contains subjects from the National Cancer Institute’s Clinical Proteomic Tumor Analysis Consortium CPTAC Ovarian Serous Cystadenocarcinoma cohort. CPTAC is a national effort to accelerate the understanding of the molecular basis of cancer through the application of large-scale prote", "focus": "Ovarian Cancer", "dataTypes": "DICOM imaging, Clinical metadata, Segmentation annotations", "modality": "SM", "subjects": "73", "design": "", "access": "Open (Google Cloud / AWS)", "accessBucket": "Open", "license": "CC-BY or collection-specific", "repo": "NIH Imaging Data Commons (IDC)", "url": "https://doi.org/10.5281/zenodo.12666842"}, {"name": "cptac_ucec", "description": "This collection contains subjects from the National Cancer Institute''s Clinical Proteomic Tumor Analysis Consortium Uterine Corpus Endometrial Carcinoma (CPTAC-UCEC) cohort. CPTAC is a national effort to accelerate the understanding of the molecular basis of cancer through the application of large-", "focus": "Corpus Endometrial Carcinoma", "dataTypes": "DICOM imaging, Clinical metadata, Segmentation annotations", "modality": "SM, RTSTRUCT, CT, MR, PT, US", "subjects": "254", "design": "", "access": "Open (Google Cloud / AWS)", "accessBucket": "Open", "license": "CC-BY or collection-specific", "repo": "NIH Imaging Data Commons (IDC)", "url": "https://doi.org/10.7937/89m3-kq43 https://doi.org/10.5281/zenodo.12666865 https://doi.org/10.7937/k9/tcia.2018.3r3juisw"}, {"name": "duke_breast_cancer_mri", "description": "Dynamic contrast-enhanced magnetic resonance images of breast cancer patients with tumor locations (Duke-Breast-Cancer-MRI) This collection contains MRI imaging and other data for 922 patients with invasive breast cancer. Prone position axial breast MRI images were acquired by 1.5T or 3T scanners;  ", "focus": "Breast Cancer", "dataTypes": "DICOM imaging, Clinical metadata, Segmentation annotations", "modality": "SEG, MR, SEG", "subjects": "922", "design": "", "access": "Open (Google Cloud / AWS)", "accessBucket": "Open", "license": "CC-BY or collection-specific", "repo": "NIH Imaging Data Commons (IDC)", "url": "https://doi.org/10.7937/tcia.e3sv-re93 https://doi.org/10.5281/zenodo.8345959"}, {"name": "ea1141", "description": "This collection contains data from the Eastern Cooperative Oncology Group (ECOG) Clinical Trial NCT02933489 , “ Abbreviated Breast MRI and Digital Tomosynthesis Mammography in Screening Women With Dense Breasts \". Principle Investigator: Christopher Comstock. It was sponsored by NCI and performed by", "focus": "Breast Cancer", "dataTypes": "DICOM imaging, Clinical metadata, Segmentation annotations", "modality": "CT, MG, MR", "subjects": "500", "design": "", "access": "Open (Google Cloud / AWS)", "accessBucket": "Open", "license": "CC-BY or collection-specific", "repo": "NIH Imaging Data Commons (IDC)", "url": "https://doi.org/10.7937/2bas-hr33"}, {"name": "htan_ohsu", "description": "The overall goal of the HTAN OMS Atlas Center is to elucidate mechanisms by which metastatic breast cancers become resistant to current generation pathway- and immune checkpoint-targeted treatments. The OMS Atlas is motivated by the appreciation that these treatments are often effective in primary t", "focus": "Breast Cancer", "dataTypes": "DICOM imaging, Clinical metadata, Segmentation annotations", "modality": "PR, SM", "subjects": "1", "design": "", "access": "Open (Google Cloud / AWS)", "accessBucket": "Open", "license": "CC-BY or collection-specific", "repo": "NIH Imaging Data Commons (IDC)", "url": "https://doi.org/10.5281/zenodo.12689950"}, {"name": "ispy1", "description": "ISPY1/ACRIN 6657 was designed as a prospective study to test MRI for ability to predict response to treatment and risk-of-recurrence in patients with stage 2 or 3 breast cancer receiving neoadjuvant chemotherapy (NACT). ACRIN 6657 was conducted as a companion study to CALGB 150007, a correlative sci", "focus": "Breast Cancer", "dataTypes": "DICOM imaging, Clinical metadata, Segmentation annotations", "modality": "SR, MR, SEG", "subjects": "222", "design": "", "access": "Open (Google Cloud / AWS)", "accessBucket": "Open", "license": "CC-BY or collection-specific", "repo": "NIH Imaging Data Commons (IDC)", "url": "https://doi.org/10.7937/tcia.2019.wgllssg1 https://doi.org/10.7937/k9/tcia.2016.hdhpgjlk"}, {"name": "ispy2", "description": "I-SPY 2 (Investigation of Serial studies to Predict Your Therapeutic Response with Imaging And moLecular analysis 2) is an ongoing, multi-center trial designed to quickly evaluate the efficacy of new agents for breast cancer in neoadjuvant chemotherapy (NAC) setting. Women aged ≥18 years diagnosed w", "focus": "Breast Cancer", "dataTypes": "DICOM imaging, Clinical metadata, Segmentation annotations", "modality": "MR, SEG", "subjects": "719", "design": "", "access": "Open (Google Cloud / AWS)", "accessBucket": "Open", "license": "CC-BY or collection-specific", "repo": "NIH Imaging Data Commons (IDC)", "url": "https://doi.org/10.7937/tcia.d8z0-9t85"}, {"name": "mediastinal_lymph_node_seg", "description": "Accurate lymph node size estimation is critical for staging cancer patients, initial therapeutic management, and in longitudinal scans, assessing response to therapy. Machine learning models for medical image segmentation have shown remarkable progress in recent years, but we know of no tools availa", "focus": "Gynecologic Oncology", "dataTypes": "DICOM imaging, Clinical metadata, Segmentation annotations", "modality": "CT, SEG", "subjects": "513", "design": "", "access": "Open (Google Cloud / AWS)", "accessBucket": "Open", "license": "CC-BY or collection-specific", "repo": "NIH Imaging Data Commons (IDC)", "url": "https://doi.org/10.7937/qvaz-ja09"}, {"name": "mouse_mammary", "description": "This collection consists of Magnetic Resonance Imaging (MRI) of mouse breast cancer in 32 mice. Please see the Mouse-Mammary wiki page to learn more about the images and to obtain any supporting metadata for this collection.", "focus": "Breast Cancer", "dataTypes": "DICOM imaging, Clinical metadata, Segmentation annotations", "modality": "MR", "subjects": "32", "design": "", "access": "Open (Google Cloud / AWS)", "accessBucket": "Open", "license": "CC-BY or collection-specific", "repo": "NIH Imaging Data Commons (IDC)", "url": "https://doi.org/10.7937/k9/tcia.2015.9p42kse6"}, {"name": "qin_breast", "description": "This collection contains longitudinal PET/CT and quantitative MR images collected for the purpose of studying treatment assessment in breast cancer in the neoadjuvant setting. Images were acquired at three time points: prior to the start of treatment (t1), after the first cycle of treatment (t2), an", "focus": "Breast Cancer", "dataTypes": "DICOM imaging, Clinical metadata, Segmentation annotations", "modality": "SEG, CT, MR, PT", "subjects": "68", "design": "", "access": "Open (Google Cloud / AWS)", "accessBucket": "Open", "license": "CC-BY or collection-specific", "repo": "NIH Imaging Data Commons (IDC)", "url": "https://doi.org/10.7937/k9/tcia.2016.21juebh0 https://doi.org/10.5281/zenodo.8345959"}, {"name": "qin_breast_02", "description": "This data is from a multi-site, multi-parametric quantitative MRI study of adult (18+ years old) females diagnosed with invasive breast cancer. Subjects all had a lesion size >1cm in longest dimension and were undergoing neoadjuvant therapy. Participants were scanned prior to any therapy and then 2-", "focus": "Breast Cancer", "dataTypes": "DICOM imaging, Clinical metadata, Segmentation annotations", "modality": "MR", "subjects": "13", "design": "", "access": "Open (Google Cloud / AWS)", "accessBucket": "Open", "license": "CC-BY or collection-specific", "repo": "NIH Imaging Data Commons (IDC)", "url": "https://doi.org/10.7937/tcia.2019.4cfm06rr"}, {"name": "qin_breast_dce_mri", "description": "This collection of breast dynamic contrast-enhanced (DCE) MRI data contains images from a longitudinal study to assess breast cancer response to neoadjuvant chemotherapy. Images were acquired at four time points: prior to the start of treatment (Visit 1, V1), after the first cycle of treatment (Visi", "focus": "Breast Cancer", "dataTypes": "DICOM imaging, Clinical metadata, Segmentation annotations", "modality": "KO, MR", "subjects": "10", "design": "", "access": "Open (Google Cloud / AWS)", "accessBucket": "Open", "license": "CC-BY or collection-specific", "repo": "NIH Imaging Data Commons (IDC)", "url": "https://doi.org/10.7937/k9/tcia.2014.a2n1ixox"}, {"name": "rider_breast_mri", "description": "RIDER Breast MRI is a subsection of the broader Reference Image  Database to Evaluate  Therapy Response (RIDER) collection. RIDER is a targeted data collection for the purpose of generating an initial consensus on how to harmonize data collection and analysis for quantitative imaging methods as appl", "focus": "Breast Cancer", "dataTypes": "DICOM imaging, Clinical metadata, Segmentation annotations", "modality": "MR", "subjects": "5", "design": "", "access": "Open (Google Cloud / AWS)", "accessBucket": "Open", "license": "CC-BY or collection-specific", "repo": "NIH Imaging Data Commons (IDC)", "url": "https://doi.org/10.7937/k9/tcia.2015.h1sxnuxl"}, {"name": "spine_mets_ct_seg", "description": "This collection contains a dataset of 55 CT scans collected on patients with a large range of primary cancers and corresponding bone metastatic lesions obtained for patients with metastatic spine disease.  It includes longitudinal CT imaging data set of patients' metastatic spines planned for and tr", "focus": "Gynecologic Oncology", "dataTypes": "DICOM imaging, Clinical metadata, Segmentation annotations", "modality": "CT, SEG", "subjects": "55", "design": "", "access": "Open (Google Cloud / AWS)", "accessBucket": "Open", "license": "CC-BY or collection-specific", "repo": "NIH Imaging Data Commons (IDC)", "url": "https://doi.org/10.7937/kh36-ds04"}, {"name": "tcga_brca", "description": "The Cancer Imaging Program (CIP) is working directly with primary investigators from institutes participating in TCGA to obtain and load images relating to the genomic, clinical, and pathological data being stored within the TCGA Data Portal . Currently this MR multi-sequence image collection of bre", "focus": "Breast Cancer", "dataTypes": "DICOM imaging, Clinical metadata, Segmentation annotations", "modality": "SR, ANN, SEG, SM, MG, MR, SEG", "subjects": "1098", "design": "", "access": "Open (Google Cloud / AWS)", "accessBucket": "Open", "license": "CC-BY or collection-specific", "repo": "NIH Imaging Data Commons (IDC)", "url": "https://doi.org/10.5281/zenodo.16966285 https://doi.org/10.7937/k9/tcia.2016.ab2nazrp https://doi.org/10.5281/zenodo.12689962 https://doi.org/10.7937/tcia.2019.wgllssg1 https://doi.org/10.5281/zenodo.11099004"}, {"name": "tcga_cesc", "description": "The Cancer Genome Atlas-Cervical Squamous Cell Carcinoma and Endocervical Adenocarcinoma (TCGA-CESC) data collection is part of a larger effort to enhance the TCGA http://cancergenome.nih.gov/ data set with characterized radiological images. The Cancer Imaging Program (CIP) with the cooperation of s", "focus": "Gynecologic Oncology", "dataTypes": "DICOM imaging, Clinical metadata, Segmentation annotations", "modality": "MR, ANN, SEG, SEG, SM", "subjects": "307", "design": "", "access": "Open (Google Cloud / AWS)", "accessBucket": "Open", "license": "CC-BY or collection-specific", "repo": "NIH Imaging Data Commons (IDC)", "url": "https://doi.org/10.7937/k9/tcia.2016.sq4m8yp4 https://doi.org/10.5281/zenodo.12689956 https://doi.org/10.5281/zenodo.16966285 https://doi.org/10.5281/zenodo.11099004"}, {"name": "tcga_ov", "description": "The Cancer Genome Atlas-Ovarian Cancer (TCGA-OV) data collection is part of a larger effort to enhance the TCGA http://cancergenome.nih.gov/ data set with characterized radiological images. The Cancer Imaging Program (CIP) with the cooperation of several of the TCGA tissue-contributing institutions ", "focus": "Ovarian Serous Cystadenocarcinoma", "dataTypes": "DICOM imaging, Clinical metadata, Segmentation annotations", "modality": "SM, SEG, CT, MR, OT", "subjects": "591", "design": "", "access": "Open (Google Cloud / AWS)", "accessBucket": "Open", "license": "CC-BY or collection-specific", "repo": "NIH Imaging Data Commons (IDC)", "url": "https://doi.org/10.7937/k9/tcia.2016.ndo1mdfq https://doi.org/10.5281/zenodo.16966285 https://doi.org/10.5281/zenodo.12689954"}, {"name": "tcga_ucec", "description": "The Cancer Genome Atlas-Uterine Corpus Endometrial Carcinoma (TCGA-UCEC) data collection is part of a larger effort to enhance the TCGA http://cancergenome.nih.gov/ data set with characterized radiological images. The Cancer Imaging Program (CIP) with the cooperation of several of the TCGA tissue-co", "focus": "Uterine Corpus Endometrial Carcinoma", "dataTypes": "DICOM imaging, Clinical metadata, Segmentation annotations", "modality": "SM, SEG, CR, CT, MR, PT, ANN, SEG", "subjects": "560", "design": "", "access": "Open (Google Cloud / AWS)", "accessBucket": "Open", "license": "CC-BY or collection-specific", "repo": "NIH Imaging Data Commons (IDC)", "url": "https://doi.org/10.5281/zenodo.16966285 https://doi.org/10.7937/k9/tcia.2016.gkj0zwac https://doi.org/10.5281/zenodo.12689968 https://doi.org/10.5281/zenodo.11099004"}, {"name": "tcga_ucs", "description": "Uterine carcinosarcoma (UCS) is a cancer that develops in the uterus. Carcinosarcoma signifies that, when looked at under a microscope, the tumor displays histological features of both endometrial carcinoma and sarcoma. Endometrial carcinoma starts in the endometrium, the inner layer of tissue linin", "focus": "Uterine Carcinosarcoma", "dataTypes": "DICOM imaging, Clinical metadata, Segmentation annotations", "modality": "SM", "subjects": "57", "design": "", "access": "Open (Google Cloud / AWS)", "accessBucket": "Open", "license": "CC-BY or collection-specific", "repo": "NIH Imaging Data Commons (IDC)", "url": "https://doi.org/10.5281/zenodo.12689981"}, {"name": "victre", "description": "The VICTRE Trial: Open-Source, In-Silico Clinical Trial For Evaluating Digital Breast Tomosynthesis A total of 2986 subjects, with breast sizes and radiographic densities representative of a screening population and compressed thicknesses from 3.5 to 6 cm, were simulated and imaged on in-silico vers", "focus": "Breast Cancer", "dataTypes": "DICOM imaging, Clinical metadata, Segmentation annotations", "modality": "MG", "subjects": "2994", "design": "", "access": "Open (Google Cloud / AWS)", "accessBucket": "Open", "license": "CC-BY or collection-specific", "repo": "NIH Imaging Data Commons (IDC)", "url": "https://doi.org/10.7937/tcia.2019.ho23nxaw"}, {"name": "Maternal fat ultrasound measurement and nutritional assessment during pregnancy: A dataset centered in gestational outcomes", "description": "DatabaseCredentialed Access", "focus": "Maternal / Reproductive / Women's Health", "dataTypes": "Clinical waveforms, EHR, Biospecimens, Imaging", "modality": "", "subjects": "", "design": "", "access": "Database", "accessBucket": "Open", "license": "PhysioNet Credentialed Health Data License / Open", "repo": "PhysioNet", "url": "https://physionet.org/content/maternal-ultrasound-nutrition/1.0.0/"}, {"name": "Visceral adipose tissue measurements during pregnancy", "description": "DatabaseOpen Access", "focus": "Maternal / Reproductive / Women's Health", "dataTypes": "Clinical waveforms, EHR, Biospecimens, Imaging", "modality": "", "subjects": "", "design": "", "access": "Database", "accessBucket": "Open", "license": "PhysioNet Credentialed Health Data License / Open", "repo": "PhysioNet", "url": "https://physionet.org/content/maternal-visceral-adipose/1.0.0/"}, {"name": "Shiraz University Fetal Heart Sounds Database", "description": "DatabaseOpen Access", "focus": "Maternal / Reproductive / Women's Health", "dataTypes": "Clinical waveforms, EHR, Biospecimens, Imaging", "modality": "", "subjects": "", "design": "", "access": "Database", "accessBucket": "Open", "license": "PhysioNet Credentialed Health Data License / Open", "repo": "PhysioNet", "url": "https://physionet.org/content/sufhsdb/1.0.1/"}, {"name": "NInFEA: Non-Invasive Multimodal Foetal ECG-Doppler Dataset for Antenatal Cardiology Research", "description": "DatabaseOpen Access", "focus": "Maternal / Reproductive / Women's Health", "dataTypes": "Clinical waveforms, EHR, Biospecimens, Imaging", "modality": "", "subjects": "", "design": "", "access": "Database", "accessBucket": "Open", "license": "PhysioNet Credentialed Health Data License / Open", "repo": "PhysioNet", "url": "https://physionet.org/content/ninfea/1.0.0/"}, {"name": "Abdominal and Direct Fetal ECG Database", "description": "DatabaseOpen Access", "focus": "Maternal / Reproductive / Women's Health", "dataTypes": "Clinical waveforms, EHR, Biospecimens, Imaging", "modality": "", "subjects": "", "design": "", "access": "Database", "accessBucket": "Open", "license": "PhysioNet Credentialed Health Data License / Open", "repo": "PhysioNet", "url": "https://physionet.org/content/adfecgdb/1.0.0/"}, {"name": "Induced Cesarean EHG DataSet (ICEHG DS): An open dataset with electrohysterogram records of pregnancies ending in induced and cesarean section delivery", "description": "DatabaseOpen Access", "focus": "Maternal / Reproductive / Women's Health", "dataTypes": "Clinical waveforms, EHR, Biospecimens, Imaging", "modality": "", "subjects": "", "design": "", "access": "Database", "accessBucket": "Open", "license": "PhysioNet Credentialed Health Data License / Open", "repo": "PhysioNet", "url": "https://physionet.org/content/icehg-ds/1.0.1/"}, {"name": "Annotated Social Determinants of Health Dataset for Adverse Pregnancy Outcomes", "description": "DatabaseCredentialed Access", "focus": "Maternal / Reproductive / Women's Health", "dataTypes": "Clinical waveforms, EHR, Biospecimens, Imaging", "modality": "", "subjects": "", "design": "", "access": "Database", "accessBucket": "Open", "license": "PhysioNet Credentialed Health Data License / Open", "repo": "PhysioNet", "url": "https://physionet.org/content/sdoh-adverse-pregnancy/1.0.0/"}, {"name": "Fetal PCG Database", "description": "DatabaseOpen Access", "focus": "Maternal / Reproductive / Women's Health", "dataTypes": "Clinical waveforms, EHR, Biospecimens, Imaging", "modality": "", "subjects": "", "design": "", "access": "Database", "accessBucket": "Open", "license": "PhysioNet Credentialed Health Data License / Open", "repo": "PhysioNet", "url": "https://physionet.org/content/fpcgdb/1.0.0/"}, {"name": "Non-Invasive Fetal ECG Database", "description": "DatabaseOpen Access", "focus": "Maternal / Reproductive / Women's Health", "dataTypes": "Clinical waveforms, EHR, Biospecimens, Imaging", "modality": "", "subjects": "", "design": "", "access": "Database", "accessBucket": "Open", "license": "PhysioNet Credentialed Health Data License / Open", "repo": "PhysioNet", "url": "https://physionet.org/content/nifecgdb/1.0.0/"}, {"name": "Term-Preterm EHG DataSet with Tocogram", "description": "DatabaseOpen Access", "focus": "Maternal / Reproductive / Women's Health", "dataTypes": "Clinical waveforms, EHR, Biospecimens, Imaging", "modality": "", "subjects": "", "design": "", "access": "Database", "accessBucket": "Open", "license": "PhysioNet Credentialed Health Data License / Open", "repo": "PhysioNet", "url": "https://physionet.org/content/tpehgt/1.0.0/"}, {"name": "MMG Database", "description": "DatabaseOpen Access", "focus": "Maternal / Reproductive / Women's Health", "dataTypes": "Clinical waveforms, EHR, Biospecimens, Imaging", "modality": "", "subjects": "", "design": "", "access": "Database", "accessBucket": "Open", "license": "PhysioNet Credentialed Health Data License / Open", "repo": "PhysioNet", "url": "https://physionet.org/content/mmgdb/1.0.0/"}, {"name": "Non-Invasive Fetal ECG Arrhythmia Database", "description": "DatabaseOpen Access", "focus": "Maternal / Reproductive / Women's Health", "dataTypes": "Clinical waveforms, EHR, Biospecimens, Imaging", "modality": "", "subjects": "", "design": "", "access": "Database", "accessBucket": "Open", "license": "PhysioNet Credentialed Health Data License / Open", "repo": "PhysioNet", "url": "https://physionet.org/content/nifeadb/1.0.0/"}, {"name": "OB-1 Fetal ECG Database", "description": "DatabaseOpen Access", "focus": "Maternal / Reproductive / Women's Health", "dataTypes": "Clinical waveforms, EHR, Biospecimens, Imaging", "modality": "", "subjects": "", "design": "", "access": "Database", "accessBucket": "Open", "license": "PhysioNet Credentialed Health Data License / Open", "repo": "PhysioNet", "url": "https://physionet.org/content/ob1db/1.0.0/"}, {"name": "Indian Institute of Science Fetal Heart Sound Database (IIScFHSDB)", "description": "DatabaseOpen Access", "focus": "Maternal / Reproductive / Women's Health", "dataTypes": "Clinical waveforms, EHR, Biospecimens, Imaging", "modality": "", "subjects": "", "design": "", "access": "Database", "accessBucket": "Open", "license": "PhysioNet Credentialed Health Data License / Open", "repo": "PhysioNet", "url": "https://physionet.org/content/fetalheartsounddata/1.0/"}, {"name": "Simulated Fetal Phonocardiograms", "description": "DatabaseOpen Access", "focus": "Maternal / Reproductive / Women's Health", "dataTypes": "Clinical waveforms, EHR, Biospecimens, Imaging", "modality": "", "subjects": "", "design": "", "access": "Database", "accessBucket": "Open", "license": "PhysioNet Credentialed Health Data License / Open", "repo": "PhysioNet", "url": "https://physionet.org/content/simfpcgdb/1.0.0/"}, {"name": "Fetal ECG Synthetic Database", "description": "DatabaseOpen Access", "focus": "Maternal / Reproductive / Women's Health", "dataTypes": "Clinical waveforms, EHR, Biospecimens, Imaging", "modality": "", "subjects": "", "design": "", "access": "Database", "accessBucket": "Open", "license": "PhysioNet Credentialed Health Data License / Open", "repo": "PhysioNet", "url": "https://physionet.org/content/fecgsyndb/1.0.0/"}, {"name": "Noninvasive Fetal ECG: The PhysioNet/Computing in Cardiology Challenge 2013", "description": "ChallengeOpen Access", "focus": "Maternal / Reproductive / Women's Health", "dataTypes": "Clinical waveforms, EHR, Biospecimens, Imaging", "modality": "", "subjects": "", "design": "", "access": "Challenge", "accessBucket": "Application Required", "license": "PhysioNet Credentialed Health Data License / Open", "repo": "PhysioNet", "url": "https://physionet.org/content/challenge-2013/1.0.0/"}, {"name": "TN-Mammo: A Multi-view Mammography Dataset for Breast Density Classification", "description": "DatabaseRestricted Access", "focus": "Maternal / Reproductive / Women's Health", "dataTypes": "Clinical waveforms, EHR, Biospecimens, Imaging", "modality": "", "subjects": "", "design": "", "access": "Database", "accessBucket": "Open", "license": "PhysioNet Credentialed Health Data License / Open", "repo": "PhysioNet", "url": "https://physionet.org/content/tn-mammo-breast-density/1.0.0/"}, {"name": "Swiss-Mammo: A physician-written, synthetic dataset of German mammography reports", "description": "DatabaseRestricted Access", "focus": "Maternal / Reproductive / Women's Health", "dataTypes": "Clinical waveforms, EHR, Biospecimens, Imaging", "modality": "", "subjects": "", "design": "", "access": "Database", "accessBucket": "Open", "license": "PhysioNet Credentialed Health Data License / Open", "repo": "PhysioNet", "url": "https://physionet.org/content/swiss-mammo/1.0.1/"}, {"name": "Respiratory and heart rate monitoring dataset from aeration study", "description": "DatabaseOpen Access", "focus": "Maternal / Reproductive / Women's Health", "dataTypes": "Clinical waveforms, EHR, Biospecimens, Imaging", "modality": "", "subjects": "", "design": "", "access": "Database", "accessBucket": "Open", "license": "PhysioNet Credentialed Health Data License / Open", "repo": "PhysioNet", "url": "https://physionet.org/content/respiratory-heartrate-dataset/1.0.0/"}, {"name": "CORAL: expert-Curated medical Oncology Reports to Advance Language model inference", "description": "DatabaseCredentialed Access", "focus": "Maternal / Reproductive / Women's Health", "dataTypes": "Clinical waveforms, EHR, Biospecimens, Imaging", "modality": "", "subjects": "", "design": "", "access": "Database", "accessBucket": "Open", "license": "PhysioNet Credentialed Health Data License / Open", "repo": "PhysioNet", "url": "https://physionet.org/content/curated-oncology-reports/1.0/"}, {"name": "Term-Preterm EHG Database", "description": "DatabaseOpen Access", "focus": "Maternal / Reproductive / Women's Health", "dataTypes": "Clinical waveforms, EHR, Biospecimens, Imaging", "modality": "", "subjects": "", "design": "", "access": "Database", "accessBucket": "Open", "license": "PhysioNet Credentialed Health Data License / Open", "repo": "PhysioNet", "url": "https://physionet.org/content/tpehgdb/1.0.1/"}, {"name": "Women's Health Initiative (WHI)", "description": "RCT + observational study of 161,808 postmenopausal women covering HRT, cardiovascular disease, cancer, and fracture. Biospecimens and datasets available via BioLINCC.", "focus": "Menopause / Cardiovascular / Cancer Prevention", "dataTypes": "Clinical trial data, Biospecimens, DXA, Mammography, Genomics", "modality": "DXA, Mammography", "subjects": "161,808", "design": "RCT + Observational cohort", "access": "Application Required (BioLINCC / dbGaP phs000200)", "accessBucket": "Application Required", "license": "NHLBI Data Use Agreement", "repo": "BioLINCC (NHLBI)", "url": "https://biolincc.nhlbi.nih.gov/studies/whi/"}, {"name": "WISE (Women's Ischemia Syndrome Evaluation)", "description": "Evaluation of 936 women referred for coronary angiography, focusing on sex-specific ischemia mechanisms and outcomes.", "focus": "Cardiovascular Disease / Women's Heart Health", "dataTypes": "Angiography, Coronary flow reserve, Clinical assessments, Biospecimens", "modality": "Coronary angiography", "subjects": "936", "design": "Prospective cohort", "access": "Application Required (BioLINCC)", "accessBucket": "Application Required", "license": "NHLBI Data Use Agreement", "repo": "BioLINCC (NHLBI)", "url": "https://biolincc.nhlbi.nih.gov/studies/wise/"}, {"name": "HERS (Heart and Estrogen/progestin Replacement Study)", "description": "RCT of HRT in 2,763 postmenopausal women with established coronary disease — landmark trial on cardiovascular effects of HRT.", "focus": "Menopause / Cardiovascular / HRT", "dataTypes": "Clinical trial data, Biospecimens, ECG", "modality": "", "subjects": "2,763", "design": "Randomized controlled trial", "access": "Application Required (BioLINCC)", "accessBucket": "Application Required", "license": "NHLBI Data Use Agreement", "repo": "BioLINCC (NHLBI)", "url": "https://biolincc.nhlbi.nih.gov/studies/hers/"}, {"name": "CARDIA Women's Study", "description": "Longitudinal study of cardiovascular risk factor development in young adults including Black and white women followed from age 18–30 over 30+ years.", "focus": "Cardiovascular Disease / Women's Health", "dataTypes": "Clinical assessments, Imaging (echocardiography, CT), Biospecimens", "modality": "Echocardiography, CT", "subjects": "5,115 (mixed sex)", "design": "Longitudinal cohort", "access": "Application Required (BioLINCC / dbGaP)", "accessBucket": "Application Required", "license": "NHLBI Data Use Agreement", "repo": "BioLINCC (NHLBI)", "url": "https://biolincc.nhlbi.nih.gov/studies/cardia/"}, {"name": "", "description": "MITOS & ATYPIA 14 Contest, hosted by conference ICPR 2014Detection of mitosis and evaluation of nuclear atypia on breast cancer H&E stained images", "focus": "Breast / Gynecologic Imaging", "dataTypes": "DICOM imaging, Segmentation masks, Classification labels", "modality": "Mixed", "subjects": "", "design": "", "access": "Registration Required", "accessBucket": "Registration Required", "license": "Per-dataset (see URL)", "repo": "Grand Challenge", "url": "https://mitos-atypia-14.grand-challenge.org/"}, {"name": "", "description": "Automated detection and classification of breast cancer metastases in whole-slide images of histological lymph node sections. This task has high clinical relevance and would normally require extensive microscopic assessment by pathologists.", "focus": "Breast / Gynecologic Imaging", "dataTypes": "DICOM imaging, Segmentation masks, Classification labels", "modality": "Mixed", "subjects": "", "design": "", "access": "Registration Required", "accessBucket": "Registration Required", "license": "Per-dataset (see URL)", "repo": "Grand Challenge", "url": "https://camelyon17.grand-challenge.org/"}, {"name": "ICIAR 2018", "description": "Can you develop a method for automatic detection of cancerous regions in breast cancer histology images?", "focus": "Breast / Gynecologic Imaging", "dataTypes": "DICOM imaging, Segmentation masks, Classification labels", "modality": "Mixed", "subjects": "", "design": "", "access": "Registration Required", "accessBucket": "Registration Required", "license": "Per-dataset (see URL)", "repo": "Grand Challenge", "url": "https://iciar2018-challenge.grand-challenge.org/"}, {"name": "", "description": "Automated measurement of fetal head circumference using 2D ultrasound images", "focus": "Breast / Gynecologic Imaging", "dataTypes": "DICOM imaging, Segmentation masks, Classification labels", "modality": "Mixed", "subjects": "", "design": "", "access": "Registration Required", "accessBucket": "Registration Required", "license": "Per-dataset (see URL)", "repo": "Grand Challenge", "url": "https://hc18.grand-challenge.org/"}, {"name": "BreastPathQ: Cancer Cellularity Challenge 2019", "description": "SPIE-AAPM-NCI BreastPathQ:Cancer Circularity Challenge 2019: Participants will be tasked to develop an automated method for analyzing histology patches extracted from whole slide images and assign a score reflecting cancer cellularity for tumor burden assessment in each.", "focus": "Breast / Gynecologic Imaging", "dataTypes": "DICOM imaging, Segmentation masks, Classification labels", "modality": "Mixed", "subjects": "", "design": "", "access": "Registration Required", "accessBucket": "Registration Required", "license": "Per-dataset (see URL)", "repo": "Grand Challenge", "url": "https://breastpathq.grand-challenge.org/"}, {"name": "EAD2019", "description": "Endoscopic Artefact Detection (EAD) is a core problem and needed for realising robust computer-assisted tools. The EAD challenge has 3 tasks: 1) Multi-class artefact detection, 2) Region segmentation, 3) Detection generalisation.", "focus": "Breast / Gynecologic Imaging", "dataTypes": "DICOM imaging, Segmentation masks, Classification labels", "modality": "Mixed", "subjects": "", "design": "", "access": "Registration Required", "accessBucket": "Registration Required", "license": "Per-dataset (see URL)", "repo": "Grand Challenge", "url": "https://ead2019.grand-challenge.org/"}, {"name": "PatchCamelyon", "description": "PatchCamelyon is a new and challenging image classification dataset of 327.680 color images (96 x 96px) extracted from histopathology images of the CAMELYON16 challenge. The goal is to detect breast cancer metastasis in lymph nodes.", "focus": "Breast / Gynecologic Imaging", "dataTypes": "DICOM imaging, Segmentation masks, Classification labels", "modality": "Mixed", "subjects": "", "design": "", "access": "Registration Required", "accessBucket": "Registration Required", "license": "Per-dataset (see URL)", "repo": "Grand Challenge", "url": "https://patchcamelyon.grand-challenge.org/"}, {"name": "HEROHE", "description": "Unlike previous challenges, this proposes to find an image analysis algorithm to identify HER2-positive from HER2-negative breast cancer specimens evaluating only the morphological features present on the HE slide, without the staining patterns of IHC.", "focus": "Breast / Gynecologic Imaging", "dataTypes": "DICOM imaging, Segmentation masks, Classification labels", "modality": "Mixed", "subjects": "", "design": "", "access": "Registration Required", "accessBucket": "Registration Required", "license": "Per-dataset (see URL)", "repo": "Grand Challenge", "url": "https://ecdp2020.grand-challenge.org/"}, {"name": "EndoCV2020", "description": "Endoscopy computer vision challenge (EndoCV2020) introduces two core sub-themes in endoscopy: 1) artefact detection and segmentation (EAD2020) and 2) disease detection and segmentation (EDD2020).", "focus": "Breast / Gynecologic Imaging", "dataTypes": "DICOM imaging, Segmentation masks, Classification labels", "modality": "Mixed", "subjects": "", "design": "", "access": "Registration Required", "accessBucket": "Registration Required", "license": "Per-dataset (see URL)", "repo": "Grand Challenge", "url": "https://endocv.grand-challenge.org/"}, {"name": "", "description": "Prenatal ultrasound (US) measurement of amniotic fluid is an important part of fetal surveillance as it provides a non-invasive way of assessing whether there is oligohydramnios (insufficient amniotic fluid) and polyhydramnios (excess amniotic fluid),  which are associated with numerous problems bot", "focus": "Breast / Gynecologic Imaging", "dataTypes": "DICOM imaging, Segmentation masks, Classification labels", "modality": "Mixed", "subjects": "", "design": "", "access": "Registration Required", "accessBucket": "Registration Required", "license": "Per-dataset (see URL)", "repo": "Grand Challenge", "url": "https://a-afma.grand-challenge.org/"}, {"name": "EndoCV2021", "description": "Endoscopy Computer Vision Challenge 2021", "focus": "Breast / Gynecologic Imaging", "dataTypes": "DICOM imaging, Segmentation masks, Classification labels", "modality": "Mixed", "subjects": "", "design": "", "access": "Registration Required", "accessBucket": "Registration Required", "license": "Per-dataset (see URL)", "repo": "Grand Challenge", "url": "https://endocv2021.grand-challenge.org/"}, {"name": "NuCLS", "description": "Classification, Localization and Segmentation of nuclei in scanned FFPE H&E stained slides of triple-negative breast cancer from The Cancer Genome Atlas. See: Amgad et al. 2021. arXiv:2102.09099 [cs.CV].", "focus": "Breast / Gynecologic Imaging", "dataTypes": "DICOM imaging, Segmentation masks, Classification labels", "modality": "Mixed", "subjects": "", "design": "", "access": "Registration Required", "accessBucket": "Registration Required", "license": "Per-dataset (see URL)", "repo": "Grand Challenge", "url": "https://nucls.grand-challenge.org/"}, {"name": "Breast Cancer Segmentation", "description": "Semantic segmentation of histologic regions in scanned FFPE H&E stained slides of triple-negative breast cancer from The Cancer Genome Atlas. See: Amgad M, Elfandy H, ..., Gutman DA, Cooper LAD. Structured crowdsourcing enables convolutional segmentation of histology images. Bioinformatics. 2019. do", "focus": "Breast / Gynecologic Imaging", "dataTypes": "DICOM imaging, Segmentation masks, Classification labels", "modality": "Mixed", "subjects": "", "design": "", "access": "Registration Required", "accessBucket": "Registration Required", "license": "Per-dataset (see URL)", "repo": "Grand Challenge", "url": "https://bcsegmentation.grand-challenge.org/"}, {"name": "FeTA - Fetal Tissue Annotation Challenge", "description": "Fetal Tissue Annotation Challenge", "focus": "Breast / Gynecologic Imaging", "dataTypes": "DICOM imaging, Segmentation masks, Classification labels", "modality": "Mixed", "subjects": "", "design": "", "access": "Registration Required", "accessBucket": "Registration Required", "license": "Per-dataset (see URL)", "repo": "Grand Challenge", "url": "https://feta.grand-challenge.org/"}, {"name": "SARAS-MESAD", "description": "This challenge is organized under MICCAI 2021, the 24th International Conference on Medical Image Computing and Computer Assisted Intervention. The event will be held from September 27th to October 1st 2021 in Strasbourg, France. The challenge focuses on multi-domain surgeon action detection.", "focus": "Breast / Gynecologic Imaging", "dataTypes": "DICOM imaging, Segmentation masks, Classification labels", "modality": "Mixed", "subjects": "", "design": "", "access": "Registration Required", "accessBucket": "Registration Required", "license": "Per-dataset (see URL)", "repo": "Grand Challenge", "url": "https://saras-mesad.grand-challenge.org/"}, {"name": "TIGER", "description": "Grand challenge on automate assessment of tumor infiltrating lymphocytes in digital pathology slides of triple negative and Her2-positive breast cancers", "focus": "Breast / Gynecologic Imaging", "dataTypes": "DICOM imaging, Segmentation masks, Classification labels", "modality": "Mixed", "subjects": "", "design": "", "access": "Registration Required", "accessBucket": "Registration Required", "license": "Per-dataset (see URL)", "repo": "Grand Challenge", "url": "https://tiger.grand-challenge.org/"}, {"name": "TDSC-ABUS2023", "description": "Tumor Detection, Segmentation  and Classification Challenge on  Automated 3D Breast Ultrasound", "focus": "Breast / Gynecologic Imaging", "dataTypes": "DICOM imaging, Segmentation masks, Classification labels", "modality": "Mixed", "subjects": "", "design": "", "access": "Registration Required", "accessBucket": "Registration Required", "license": "Per-dataset (see URL)", "repo": "Grand Challenge", "url": "https://tdsc-abus2023.grand-challenge.org/"}, {"name": "", "description": "Early Breast Cancer Core-Needle Biopsy WSI Dataset", "focus": "Breast / Gynecologic Imaging", "dataTypes": "DICOM imaging, Segmentation masks, Classification labels", "modality": "Mixed", "subjects": "", "design": "", "access": "Registration Required", "accessBucket": "Registration Required", "license": "Per-dataset (see URL)", "repo": "Grand Challenge", "url": "https://bcnb.grand-challenge.org/"}, {"name": "3D Teeth Scan Segmentation and Labeling Challenge MICCAI2022", "description": "Computer-aided design (CAD) tools have become increasingly popular in modern dentistry for highly accurate treatment planning. In particular, in orthodontic CAD systems, advanced intraoral scanners (IOSs) are now widely used as they provide precise digital surface models of the dentition. Such model", "focus": "Breast / Gynecologic Imaging", "dataTypes": "DICOM imaging, Segmentation masks, Classification labels", "modality": "Mixed", "subjects": "", "design": "", "access": "Registration Required", "accessBucket": "Registration Required", "license": "Per-dataset (see URL)", "repo": "Grand Challenge", "url": "https://3dteethseg.grand-challenge.org/"}, {"name": "ACROBAT 2023", "description": "The ACROBAT challenge aims to advance the development of WSI registration algorithms that can align WSIs of IHC-stained breast cancer tissue sections to corresponding tissue regions that were stained with H&E. All WSIs originate from routine diagnostic workflows.", "focus": "Breast / Gynecologic Imaging", "dataTypes": "DICOM imaging, Segmentation masks, Classification labels", "modality": "Mixed", "subjects": "", "design": "", "access": "Registration Required", "accessBucket": "Registration Required", "license": "Per-dataset (see URL)", "repo": "Grand Challenge", "url": "https://acrobat.grand-challenge.org/"}, {"name": "FH-PS-AOP challenge", "description": "Fetal Head and Pubic Symphysis Segmentation Challenge", "focus": "Breast / Gynecologic Imaging", "dataTypes": "DICOM imaging, Segmentation masks, Classification labels", "modality": "Mixed", "subjects": "", "design": "", "access": "Registration Required", "accessBucket": "Registration Required", "license": "Per-dataset (see URL)", "repo": "Grand Challenge", "url": "https://ps-fh-aop-2023.grand-challenge.org/"}, {"name": "Breast Cancer Immunohistochemical Image Generation Challenge", "description": "The Breast Cancer Immunohistochemical Image Generation Challenge aims to directly generate IHC-stained breast cancer histopathology images from HE-stained  images.", "focus": "Breast / Gynecologic Imaging", "dataTypes": "DICOM imaging, Segmentation masks, Classification labels", "modality": "Mixed", "subjects": "", "design": "", "access": "Registration Required", "accessBucket": "Registration Required", "license": "Per-dataset (see URL)", "repo": "Grand Challenge", "url": "https://bci.grand-challenge.org/"}, {"name": "Endometrial Carcinoma Detection in Pipelle biopsies", "description": "Evaluation platform as reference benchmark for algorithms that can predict endometrial carcinoma on whole-slide images of Pipelle sampled endometrial slides stained in H&E, based on the test data set used in our project.", "focus": "Breast / Gynecologic Imaging", "dataTypes": "DICOM imaging, Segmentation masks, Classification labels", "modality": "Mixed", "subjects": "", "design": "", "access": "Registration Required", "accessBucket": "Registration Required", "license": "Per-dataset (see URL)", "repo": "Grand Challenge", "url": "https://endo-aid.grand-challenge.org/"}, {"name": "AURORA-Metastatic-Breast-Multiomics", "description": "TCIA collection: AURORA-Metastatic-Breast-Multiomics", "focus": "Breast / Gynecologic Imaging", "dataTypes": "DICOM imaging, Clinical metadata", "modality": "Mixed", "subjects": "", "design": "", "access": "Registration Required", "accessBucket": "Registration Required", "license": "TCIA Data Usage Policy", "repo": "The Cancer Imaging Archive (TCIA)", "url": "https://www.cancerimagingarchive.net/collection/aurora-metastatic-breast-multiomics/"}, {"name": "Drugs, Side Effects and Medical ConditionJithin Varghese·  Updated3 years agoUsability9.7· 1 File (CSV) · 1 MB · 7,641 downloads · 10 notebooks", "description": "Kaggle women's health dataset.", "focus": "Women's Health", "dataTypes": "Tabular clinical data, Imaging, Labels", "modality": "", "subjects": "", "design": "", "access": "Free (Kaggle account required)", "accessBucket": "Open", "license": "Per-dataset (see URL)", "repo": "Kaggle", "url": "https://www.kaggle.com/datasets/jithinanievarghese/drugs-side-effects-and-medical-condition"}, {"name": "Drugs Related to Medical ConditionsJithin Varghese·  Updated3 years agoUsability9.7· 1 File (CSV) · 568 kB · 3,253 downloads · 4 notebooks", "description": "Kaggle women's health dataset.", "focus": "Women's Health", "dataTypes": "Tabular clinical data, Imaging, Labels", "modality": "", "subjects": "", "design": "", "access": "Free (Kaggle account required)", "accessBucket": "Open", "license": "Per-dataset (see URL)", "repo": "Kaggle", "url": "https://www.kaggle.com/datasets/jithinanievarghese/drugs-related-to-common-treatments"}, {"name": "Emma RaducanuGabriel Preda·  Updated4 years agoUsability10.0· 2 Files (CSV, other) · 2 MB · 169 downloads · 3 notebooks", "description": "Kaggle women's health dataset.", "focus": "Women's Health", "dataTypes": "Tabular clinical data, Imaging, Labels", "modality": "", "subjects": "", "design": "", "access": "Free (Kaggle account required)", "accessBucket": "Open", "license": "Per-dataset (see URL)", "repo": "Kaggle", "url": "https://www.kaggle.com/datasets/gpreda/emma-raducanu"}, {"name": "Depression_tweetsSenapati Rajesh·  Updated3 years agoUsability6.3· 1 File (other) · 1 MB · 186 downloads · 1 notebook", "description": "Kaggle women's health dataset.", "focus": "Women's Health", "dataTypes": "Tabular clinical data, Imaging, Labels", "modality": "", "subjects": "", "design": "", "access": "Free (Kaggle account required)", "accessBucket": "Open", "license": "Per-dataset (see URL)", "repo": "Kaggle", "url": "https://www.kaggle.com/datasets/senapatirajesh/depression-tweets"}, {"name": "Football Teams TweetsKevlyn Kadamala·  Updated5 years agoUsability9.4· 14 Files (CSV) · 3 MB · 193 downloads", "description": "Kaggle women's health dataset.", "focus": "Women's Health", "dataTypes": "Tabular clinical data, Imaging, Labels", "modality": "", "subjects": "", "design": "", "access": "Free (Kaggle account required)", "accessBucket": "Open", "license": "Per-dataset (see URL)", "repo": "Kaggle", "url": "https://www.kaggle.com/datasets/kad99kev/football-teams-tweets"}, {"name": "Ghana Maternal Health Q&A Dataset (Twi-English)Ghana AI Research Network·  Updated5 months agoUsability10.0· 41 Files (JSON, other) · 2 MB · 256 downloads · 5 notebooks", "description": "Kaggle women's health dataset.", "focus": "Women's Health", "dataTypes": "Tabular clinical data, Imaging, Labels", "modality": "", "subjects": "", "design": "", "access": "Free (Kaggle account required)", "accessBucket": "Open", "license": "Per-dataset (see URL)", "repo": "Kaggle", "url": "https://www.kaggle.com/datasets/ghanaairesnet/ghana-maternal-health-twi-english-q-and-a-dataset"}, {"name": "Ghana Maternal Health Q&A Dataset (English)Ghana AI Research Network·  Updated5 months agoUsability9.4· 41 Files (JSON, other) · 1 MB · 40 downloads", "description": "Kaggle women's health dataset.", "focus": "Women's Health", "dataTypes": "Tabular clinical data, Imaging, Labels", "modality": "", "subjects": "", "design": "", "access": "Free (Kaggle account required)", "accessBucket": "Open", "license": "Per-dataset (see URL)", "repo": "Kaggle", "url": "https://www.kaggle.com/datasets/ghanaairesnet/ghana-maternal-health-q-and-a-dataset-english"}, {"name": "Ghana Maternal Health Q&A Dataset (Ewe-English)Ghana AI Research Network·  Updated5 months agoUsability9.4· 41 Files (JSON, other) · 2 MB · 4 downloads", "description": "Kaggle women's health dataset.", "focus": "Women's Health", "dataTypes": "Tabular clinical data, Imaging, Labels", "modality": "", "subjects": "", "design": "", "access": "Free (Kaggle account required)", "accessBucket": "Open", "license": "Per-dataset (see URL)", "repo": "Kaggle", "url": "https://www.kaggle.com/datasets/ghanaairesnet/ghana-maternal-health-q-and-a-dataset-ewe"}, {"name": "Ghana Maternal Health Q&A Dataset (Hausa-English)Ghana AI Research Network·  Updated5 months agoUsability9.4· 41 Files (JSON, other) · 2 MB · 3 downloads", "description": "Kaggle women's health dataset.", "focus": "Women's Health", "dataTypes": "Tabular clinical data, Imaging, Labels", "modality": "", "subjects": "", "design": "", "access": "Free (Kaggle account required)", "accessBucket": "Open", "license": "Per-dataset (see URL)", "repo": "Kaggle", "url": "https://www.kaggle.com/datasets/ghanaairesnet/ghana-maternal-health-q-and-a-dataset-hausa-english"}, {"name": "Ghana Maternal Health Q&A Dataset (Ga-English)Ghana AI Research Network·  Updated5 months agoUsability9.4· 41 Files (JSON, other) · 2 MB · 88 downloads", "description": "Kaggle women's health dataset.", "focus": "Women's Health", "dataTypes": "Tabular clinical data, Imaging, Labels", "modality": "", "subjects": "", "design": "", "access": "Free (Kaggle account required)", "accessBucket": "Open", "license": "Per-dataset (see URL)", "repo": "Kaggle", "url": "https://www.kaggle.com/datasets/ghanaairesnet/ghana-maternal-health-q-and-a-dataset-ga-english"}, {"name": "Symptom2DiseaseNiyar R Barman·  Updated3 years agoUsability10.0· 1 File (CSV) · 45 kB · 11K downloads · 47 notebooks", "description": "Kaggle women's health dataset.", "focus": "Women's Health", "dataTypes": "Tabular clinical data, Imaging, Labels", "modality": "", "subjects": "", "design": "", "access": "Free (Kaggle account required)", "accessBucket": "Open", "license": "Per-dataset (see URL)", "repo": "Kaggle", "url": "https://www.kaggle.com/datasets/niyarrbarman/symptom2disease"}, {"name": "MedicalConversations2DiseaseArtem Miniailo·  Updateda year agoUsability10.0· 1 File (CSV) · 109 kB · 515 downloads · 4 notebooks", "description": "Kaggle women's health dataset.", "focus": "Women's Health", "dataTypes": "Tabular clinical data, Imaging, Labels", "modality": "", "subjects": "", "design": "", "access": "Free (Kaggle account required)", "accessBucket": "Open", "license": "Per-dataset (see URL)", "repo": "Kaggle", "url": "https://www.kaggle.com/datasets/artemminiailo/medicalconversations2disease"}];
+const FOCUSES = ["Breast / Gynecologic Imaging", "Breast Cancer", "Breast Cancer / Diagnosis", "Breast Cancer / Genomics", "Breast Cancer / Genomics / Prognosis", "Breast Cancer / Pathology", "Breast Cancer / Proteogenomics", "Breast Cancer / Screening", "Breast Cancer / Screening / Health Disparities", "Breast Cancer / Treatment", "Breast Cancer / Treatment Response", "Breast Cancer Risk / Environmental Health", "Breast Cancer, Non-Cancer", "Breast Invasive Carcinoma", "Cardiovascular Disease / Women's Health", "Cardiovascular Disease / Women's Heart Health", "Cervical Cancer", "Cervical Cancer / Cytology", "Cervical Cancer / Genomics", "Corpus Endometrial Carcinoma", "Ductal and Lobular Neoplasms", "Endometrial Cancer / Genomics", "Epithelial Neoplasms, NOS", "Fertility / Preconception / Maternal Health", "General Women's Health / Chronic Disease", "General Women's Health / Health Disparities", "General Women's Health / Menopause / Reproductive", "General Women's Health / Precision Medicine", "General Women's Health / Preventive Care", "Gynecologic Oncology", "Maternal / Reproductive / Women's Health", "Maternal Health / Fetal Development", "Maternal Health / Fetal Monitoring", "Maternal Health / Obstetric Imaging", "Maternal Health / Risk Prediction", "Mature B-Cell Lymphomas, Not Reported", "Menopause / Cardiovascular / Cancer Prevention", "Menopause / Cardiovascular / HRT", "Menopause / Reproductive Aging", "Neuroepitheliomatous Neoplasms, Not Applicable", "Nevi and Melanomas", "Ovarian Cancer", "Ovarian Cancer / Cancer Screening", "Ovarian Cancer / Genomics", "Ovarian Serous Cystadenocarcinoma", "Reproductive Health / Fertility", "Soft Tissue Tumors and Sarcomas, NOS", "Uterine Cancer / Genomics", "Uterine Carcinosarcoma", "Uterine Corpus Endometrial Carcinoma", "Women's Health"];
+const REPOS   = ["BioLINCC (NHLBI)", "BioLINCC / dbGaP", "Boston University", "CDC / BRFSS", "CDC / NCHS", "Grand Challenge", "Grand Challenge / CAMELYON", "Harvard T.H. Chan School of Public Health", "Herlev University Hospital", "ICPSR / BioLINCC", "INESC TEC / Kaggle", "Kaggle", "Kaggle / Mendeley Data", "Kaggle / UCI", "NCI / dbGaP", "NCI CPTAC / PDC", "NCI GDC", "NCI GDC / TCGA", "NICHD DASH", "NIEHS / dbGaP phs001204", "NIH All of Us", "NIH Imaging Data Commons (IDC)", "PhysioNet", "PhysioNet / AWS Open Data", "Synapse / MICCAI", "The Cancer Imaging Archive (TCIA)", "UCI Machine Learning Repository", "UK Biobank", "University of Ioannina / Kaggle", "University of Porto", "Zenodo / Kaggle", "cBioPortal / EGA"];
+
+const STATUSES = ['Not Started','Applied','Pending Review','Approved','Rejected','Access Granted'];
+const STATUS_COLORS = {
+  'Not Started':    '#6b7280',
+  'Applied':        '#1d4ed8',
+  'Pending Review': '#b45309',
+  'Approved':       '#15803d',
+  'Rejected':       '#b91c1c',
+  'Access Granted': '#7e22ce',
+};
+const FUNNEL_ORDER = ['Not Started','Applied','Pending Review','Approved','Rejected','Access Granted'];
+
+// ── LocalStorage helpers ──────────────────────────────────────────────────
+function loadApps() {
+  try { return JSON.parse(localStorage.getItem('wh_applications') || '{}'); }
+  catch { return {}; }
+}
+function saveApps(apps) {
+  localStorage.setItem('wh_applications', JSON.stringify(apps));
+  updateBadge();
+}
+function updateBadge() {
+  const n = Object.keys(loadApps()).length;
+  document.getElementById('app-count-badge').textContent = n;
+}
+
+// ── Tabs ────────────────────────────────────────────────────────────────
+function switchTab(name) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById(name + '-panel').classList.add('active');
+  const btns = document.querySelectorAll('.tab-btn');
+  const idx  = ['browse','tracker','impact'].indexOf(name);
+  btns[idx].classList.add('active');
+  if (name === 'tracker') renderTracker();
+  if (name === 'impact')  renderImpact();
+}
+
+// ── Escape HTML ──────────────────────────────────────────────────────────
+function esc(s) {
+  return String(s||'')
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── Access helpers ────────────────────────────────────────────────────────
+function accessClass(b) {
+  if (b==='Open') return 'badge-open';
+  if (b==='Registration Required') return 'badge-registration';
+  return 'badge-application';
+}
+function accessLabel(b) {
+  if (b==='Open') return '✓ Open';
+  if (b==='Registration Required') return '⚠ Registration';
+  return '⟳ Application';
+}
+function applyLabel(b) {
+  if (b==='Open') return 'Access Dataset →';
+  if (b==='Registration Required') return 'Register & Access →';
+  return 'Apply for Access →';
+}
+
+// ── Toast ────────────────────────────────────────────────────────────────
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+// ══════════════════════════════════════
+//  BROWSE
+// ══════════════════════════════════════
+const focusEl = document.getElementById('filter-focus');
+FOCUSES.forEach(f => {
+  const o = document.createElement('option');
+  o.value = o.textContent = f; focusEl.appendChild(o);
+});
+const repoEl = document.getElementById('filter-repo');
+REPOS.forEach(r => {
+  const o = document.createElement('option');
+  o.value = o.textContent = r; repoEl.appendChild(o);
+});
+
+function makeCard(d) {
+  const apps    = loadApps();
+  const tracked = !!apps[d.url];
+  const hasUrl  = d.url && d.url.startsWith('http');
+  const urlKey  = esc(d.url);
+
+  return `
+<div class="card${tracked?' tracked':''}" data-url="${urlKey}">
+  <div class="card-header">
+    <div class="card-title">${esc(d.name)}</div>
+    <span class="badge ${accessClass(d.accessBucket)}">${accessLabel(d.accessBucket)}</span>
+  </div>
+  <p class="card-desc">${esc(d.description)}</p>
+  <div class="meta">
+    ${d.focus ? `<span class="pill pill-focus">${esc(d.focus)}</span>` : ''}
+    ${d.repo  ? `<span class="pill pill-repo">${esc(d.repo)}</span>`  : ''}
+    ${d.design? `<span class="pill">${esc(d.design)}</span>`          : ''}
+  </div>
+  <div class="detail-rows">
+    ${d.subjects  ? `<div class="detail-row"><span class="detail-label">Subjects</span><span class="detail-val">${esc(d.subjects)}</span></div>` : ''}
+    ${d.dataTypes ? `<div class="detail-row"><span class="detail-label">Data</span><span class="detail-val">${esc(d.dataTypes)}</span></div>` : ''}
+    ${d.modality  ? `<div class="detail-row"><span class="detail-label">Modality</span><span class="detail-val">${esc(d.modality)}</span></div>` : ''}
+    ${d.license   ? `<div class="detail-row"><span class="detail-label">License</span><span class="detail-val">${esc(d.license)}</span></div>` : ''}
+  </div>
+  <div class="card-footer">
+    ${hasUrl ? `<a class="btn-apply" href="${urlKey}" target="_blank" rel="noopener">${applyLabel(d.accessBucket)}</a>` : ''}
+    <button class="btn-track ${tracked?'is-tracked':''}"
+            onclick="toggleTrack(${JSON.stringify(JSON.stringify(d))})"
+            title="${tracked?'Remove from tracker':'Track this application'}">
+      ${tracked ? '✓ Tracking' : '+ Track'}
+    </button>
+    ${hasUrl ? `<button class="btn-copy" onclick="copyUrl('${urlKey}',this)" title="Copy URL">⎘</button>` : ''}
+  </div>
+</div>`;
+}
+
+function renderGrid(items) {
+  const grid = document.getElementById('grid');
+  grid.innerHTML = items.map(makeCard).join('');
+  document.getElementById('browse-empty').style.display = items.length ? 'none' : 'block';
+  document.getElementById('result-count').textContent = `${items.length} of ${DATA.length} datasets`;
+}
+
+function filterBrowse() {
+  const q      = document.getElementById('search').value.toLowerCase().trim();
+  const access = document.getElementById('filter-access').value;
+  const focus  = document.getElementById('filter-focus').value;
+  const repo   = document.getElementById('filter-repo').value;
+  const result = DATA.filter(d => {
+    if (access && d.accessBucket !== access) return false;
+    if (focus  && d.focus !== focus)         return false;
+    if (repo   && d.repo  !== repo)          return false;
+    if (q) {
+      const hay = [d.name,d.description,d.focus,d.dataTypes,d.repo,d.design,d.modality,d.access]
+                  .join(' ').toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  });
+  renderGrid(result);
+}
+
+['search','filter-access','filter-focus','filter-repo'].forEach(id =>
+  document.getElementById(id).addEventListener('input', filterBrowse));
+
+function toggleTrack(dJson) {
+  const d    = JSON.parse(dJson);
+  const apps = loadApps();
+  if (apps[d.url]) {
+    delete apps[d.url];
+    toast('Removed from tracker');
+  } else {
+    apps[d.url] = {
+      name: d.name, focus: d.focus, repo: d.repo,
+      accessBucket: d.accessBucket, url: d.url,
+      status: 'Not Started',
+      dateAdded:    new Date().toISOString().slice(0,10),
+      dateApplied:  '', dateDecision: '',
+      researchQuestion: '', notes: '', outputs: '',
+    };
+    toast('Added to tracker!');
+  }
+  saveApps(apps);
+  filterBrowse(); // re-render cards to update tracked state
+}
+
+function copyUrl(url, btn) {
+  navigator.clipboard.writeText(url).then(() => {
+    const orig = btn.textContent;
+    btn.textContent = '✓'; btn.style.color = '#15803d';
+    toast('Link copied!');
+    setTimeout(() => { btn.textContent = orig; btn.style.color = ''; }, 2000);
+  });
+}
+
+// ══════════════════════════════════════
+//  TRACKER
+// ══════════════════════════════════════
+function statusClass(s) { return 'status-' + s.replace(/\s+/g,'-'); }
+
+function makeAppCard(key, app) {
+  const sc = statusClass(app.status);
+  return `
+<div class="app-card" id="appcard-${btoa(key).replace(/[+/=]/g,'')}">
+  <div class="app-card-top">
+    <div class="app-card-info">
+      <div class="app-card-name">${esc(app.name)}</div>
+      <div class="app-card-meta">
+        <span>${esc(app.focus||'')}</span>
+        <span>·</span>
+        <span>${esc(app.repo||'')}</span>
+        ${app.url ? `<span>·</span><a class="app-card-link" href="${esc(app.url)}" target="_blank" rel="noopener">Open dataset ↗</a>` : ''}
+      </div>
+    </div>
+    <div class="app-card-controls">
+      <select class="status-select ${sc}"
+              onchange="updateField('${esc(key)}','status',this.value);this.className='status-select '+statusClass(this.value)">
+        ${STATUSES.map(s=>`<option${s===app.status?' selected':''}>${s}</option>`).join('')}
+      </select>
+      <button class="btn-remove" onclick="removeApp('${esc(key)}')">Remove</button>
+    </div>
+  </div>
+  <div class="app-card-detail">
+    <div class="app-field">
+      <label>Date Applied</label>
+      <input type="date" value="${esc(app.dateApplied||'')}"
+             onchange="updateField('${esc(key)}','dateApplied',this.value)" />
+    </div>
+    <div class="app-field">
+      <label>Decision Date</label>
+      <input type="date" value="${esc(app.dateDecision||'')}"
+             onchange="updateField('${esc(key)}','dateDecision',this.value)" />
+    </div>
+    <div class="app-field app-field-wide">
+      <label>Research Question</label>
+      <input type="text" placeholder="What are you investigating with this dataset?"
+             value="${esc(app.researchQuestion||'')}"
+             onchange="updateField('${esc(key)}','researchQuestion',this.value)" />
+    </div>
+    <div class="app-field app-field-wide">
+      <label>Notes</label>
+      <textarea placeholder="Contact info, requirements, IRB status, next steps…"
+                onchange="updateField('${esc(key)}','notes',this.value)">${esc(app.notes||'')}</textarea>
+    </div>
+    <div class="app-field app-field-wide">
+      <label>Research Outputs (papers, analyses, presentations)</label>
+      <textarea placeholder="e.g. 'Submitted abstract to AMIA 2026', 'Analysis of menopause endpoints complete'…"
+                onchange="updateField('${esc(key)}','outputs',this.value)">${esc(app.outputs||'')}</textarea>
+    </div>
+  </div>
+</div>`;
+}
+
+function renderTracker() {
+  const apps       = loadApps();
+  const statusFilter = document.getElementById('tracker-filter-status').value;
+  const keys       = Object.keys(apps).filter(k =>
+    !statusFilter || apps[k].status === statusFilter);
+
+  document.getElementById('tracker-empty').style.display =
+    Object.keys(apps).length === 0 ? 'block' : 'none';
+
+  document.getElementById('app-list').innerHTML =
+    keys.length === 0 && Object.keys(apps).length > 0
+      ? '<p style="color:var(--gray);font-size:.9rem;padding:1rem 0;">No applications match this filter.</p>'
+      : keys.map(k => makeAppCard(k, apps[k])).join('');
+}
+
+function updateField(key, field, value) {
+  const apps = loadApps();
+  if (!apps[key]) return;
+  apps[key][field] = value;
+  saveApps(apps);
+}
+
+function removeApp(key) {
+  const apps = loadApps();
+  delete apps[key];
+  saveApps(apps);
+  renderTracker();
+  filterBrowse();
+  toast('Application removed');
+}
+
+function exportCSV() {
+  const apps = loadApps();
+  const keys = Object.keys(apps);
+  if (!keys.length) { toast('No applications to export'); return; }
+  const cols = ['name','focus','repo','status','dateAdded','dateApplied','dateDecision',
+                 'researchQuestion','notes','outputs','url'];
+  const header = cols.join(',');
+  const rows   = keys.map(k => {
+    const a = apps[k];
+    return cols.map(c => `"${(a[c]||'').replace(/"/g,'""')}"`).join(',');
+  });
+  const csv  = [header, ...rows].join('\n');
+  const blob = new Blob([csv], {type:'text/csv'});
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = 'wh_applications.csv'; a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ══════════════════════════════════════
+//  IMPACT
+// ══════════════════════════════════════
+function renderImpact() {
+  const apps  = loadApps();
+  const keys  = Object.keys(apps);
+  const total = keys.length;
+
+  // Counts by status
+  const byStat = {};
+  FUNNEL_ORDER.forEach(s => byStat[s] = 0);
+  keys.forEach(k => { byStat[apps[k].status] = (byStat[apps[k].status]||0)+1; });
+
+  const approved = byStat['Approved'] + byStat['Access Granted'];
+  const applied  = total - byStat['Not Started'];
+  const rejected = byStat['Rejected'];
+
+  // Avg decision time (dateApplied → dateDecision)
+  let decisionDays = [];
+  keys.forEach(k => {
+    const a = apps[k];
+    if (a.dateApplied && a.dateDecision) {
+      const diff = (new Date(a.dateDecision) - new Date(a.dateApplied)) / 86400000;
+      if (diff >= 0) decisionDays.push(diff);
+    }
+  });
+  const avgDays = decisionDays.length
+    ? Math.round(decisionDays.reduce((a,b)=>a+b,0)/decisionDays.length) : null;
+
+  // Outputs count
+  const outputCount = keys.filter(k => (apps[k].outputs||'').trim().length > 0).length;
+
+  // ── Stat cards ──
+  document.getElementById('stat-grid').innerHTML = [
+    {v: total,    l: 'Datasets Tracked'},
+    {v: applied,  l: 'Applications Submitted'},
+    {v: approved, l: 'Approved / Access Granted'},
+    {v: rejected, l: 'Rejected'},
+    {v: total && applied ? Math.round(approved/Math.max(applied,1)*100)+'%' : '—', l: 'Approval Rate'},
+    {v: avgDays !== null ? avgDays+'d' : '—', l: 'Avg. Decision Time'},
+    {v: outputCount, l: 'Datasets with Outputs'},
+  ].map(s => `
+    <div class="stat-card">
+      <div class="stat-value">${s.v}</div>
+      <div class="stat-label">${s.l}</div>
+    </div>`).join('');
+
+  // ── Funnel ──
+  const maxCount = Math.max(...Object.values(byStat), 1);
+  document.getElementById('funnel-chart').innerHTML = FUNNEL_ORDER.map(s => `
+    <div class="funnel-row">
+      <div class="funnel-label">${s}</div>
+      <div class="funnel-bar-wrap">
+        <div class="funnel-bar" style="width:${Math.round(byStat[s]/maxCount*100)}%;background:${STATUS_COLORS[s]}">
+          ${byStat[s] > 0 ? byStat[s] : ''}
+        </div>
+      </div>
+      <div class="funnel-count" style="color:${STATUS_COLORS[s]}">${byStat[s]}</div>
+    </div>`).join('');
+
+  // ── Focus breakdown ──
+  const byFocus = {};
+  keys.forEach(k => {
+    const f = apps[k].focus || 'Unknown';
+    byFocus[f] = (byFocus[f]||0)+1;
+  });
+  const topFoci = Object.entries(byFocus).sort((a,b)=>b[1]-a[1]).slice(0,10);
+  const maxF    = topFoci.length ? topFoci[0][1] : 1;
+  document.getElementById('focus-breakdown').innerHTML = topFoci.length
+    ? topFoci.map(([f,n]) => `
+        <div class="breakdown-row">
+          <div class="breakdown-focus">${esc(f)}</div>
+          <div class="breakdown-dots">
+            ${Array.from({length:10},(_,i)=>`<div class="dot${i<Math.round(n/maxF*10)?' filled':''}"></div>`).join('')}
+          </div>
+          <div class="breakdown-n">${n}</div>
+        </div>`).join('')
+    : '<p class="no-outputs">No applications yet.</p>';
+
+  // ── Outputs ──
+  const outputEntries = keys.filter(k=>(apps[k].outputs||'').trim())
+    .map(k=>({name:apps[k].name, text:apps[k].outputs}));
+  document.getElementById('outputs-list').innerHTML = outputEntries.length
+    ? outputEntries.map(o=>`
+        <div class="output-entry">
+          <div class="out-dataset">${esc(o.name)}</div>
+          <div class="out-text">${esc(o.text)}</div>
+        </div>`).join('')
+    : '<p class="no-outputs">No outputs recorded yet. Add them in the Applications tab.</p>';
+}
+
+// ── Init ────────────────────────────────────────────────────────────────
+updateBadge();
+renderGrid(DATA);
+</script>
+</body>
+</html>
